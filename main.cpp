@@ -9,7 +9,6 @@ using namespace std;
 Sim *g_pSim;
 OS *g_pOS;
 CPU *g_pCPU;
-Computer *g_pComputer;
 AE *g_pAE;
 
 int main()
@@ -22,8 +21,6 @@ int main()
     g_pCPU = new CPU;
     g_pAE = new AE;
 
-    g_pComputer = new Computer;
-    g_pComputer->PrintCurrentConfig();
 
     Process * all_processes[amount];
     for (int i = 0; i < amount; i++) {
