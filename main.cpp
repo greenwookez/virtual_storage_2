@@ -54,7 +54,6 @@ int main()
     };
 
     delete g_pSim;
-    delete g_pComputer;
     delete g_pOS;
     delete g_pCPU;
     delete g_pAE;

@@ -1,18 +1,19 @@
 #include <vector>
 #include <ctime>
+#include <exception>
 #include "sim.hpp"
 
 using namespace std;
 
-const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO;
+const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 0;
 
-const SimulatorTime CPU_DEFAULT_TIME_FOR_COMVERSION;
+const SimulatorTime CPU_DEFAULT_TIME_FOR_COMVERSION = 0;
 
-const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT;
-const uint64_t OS_DEFAULT_RAM_SIZE;
-const uint64_t OS_DEFAULT_DISKSPACE_SIZE;
+const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 0;
+const uint64_t OS_DEFAULT_RAM_SIZE = 0;
+const uint64_t OS_DEFAULT_DISKSPACE_SIZE = 0;
 
-const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY;
+const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 0;
 
 const SimulatorTime nanoSec = 1;
 const SimulatorTime microSec = 1000000;
@@ -26,6 +27,7 @@ typedef PageNumber RealAddress;
 typedef PageNumber DiskAddress;
 
 struct RequestStruct;
+class Process;
 
 class OS : public Agent {
     class TT {
@@ -42,7 +44,6 @@ class OS : public Agent {
     public:
         TT(Process* _p_process, PageNumber size);
         TTStruct& GetRecord(VirtualAddress vaddress);
-        TTStruct& GetRecord(RealAddress raddress);
         Process* GetProcess();
     };
     vector <TT> translation_tables;
@@ -51,9 +52,11 @@ class OS : public Agent {
         vector <bool> ram; // true means already in use
     public:
         RAM();
-        bool& GetRealAddress(PageNumber raddress);
+        bool GetRealAddress(PageNumber raddress);
+        void SetRealAddress(PageNumber raddress, bool value);
         int GetSize();
     } ram;
+
 
     class Requester {
         vector <RequestStruct> request_queue;
@@ -139,7 +142,7 @@ public:
     uint64_t GetRequestedMemory();
 };
 
-int randomizer(int max); // Функция, возвращающая любое число от 0 до max-1.
+int randomizer(int max);
 
 extern OS* g_pOS;
 extern CPU* g_pCPU;
