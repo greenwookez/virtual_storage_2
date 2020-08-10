@@ -53,8 +53,8 @@ int OS::RAM::GetSize() {
 
 void OS::Requester::AddRequest(Process* p_process, VirtualAddress vaddress, bool load_flag) {
     if (IsEmpty()) {
-        /* Если на момент добавления запроса в очередь, последняя пуста, то
-        сами планируем событие, обрабатывающее очередь. */
+        /* пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ
+        пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. */
         Schedule(GetTime(), g_pAE, AE::ProcessRequest);
     }
 
@@ -125,7 +125,7 @@ void OS::LoadProcess(Process* p_process) {
     TT tmp(p_process, p_process->GetRequestedMemory());
     translation_tables.push_back(tmp);
 
-    scheduler.AddProcess();
+    scheduler.AddProcess(p_process);
 }
 
 void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
@@ -143,7 +143,7 @@ void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
 }
 
 void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
-    /* Выбор кандидата для распределения. В данном случае - рандомно. */
+    /* пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. */
     RealAddress candidate = (RealAddress)randomizer(ram.GetSize());
     
     requester.AddRequest(p_process, vaddress, true);
@@ -174,15 +174,15 @@ void OS::ProcessQueue() {
 }
 
 void OS::Work() {
-
+    //
 }
 
 void OS::Wait() {
-
+    //
 }
 
 void OS::Start() {
-
+    //
 }
 
 
@@ -198,21 +198,21 @@ void CPU::Convert(VirtualAddress vaddress, Process *p_process) {
 }
 
 void CPU::Work() {
-
+    //
 }
 
 void CPU::Wait() {
-
+    //
 }
 
 void CPU::Start() {
-
+    //
 }
 
 
 
 AE::DiskSpace::DiskSpace() {
-    for (int i = 0; i < DEFAULT_DISKSPACE_SIZE; i++) {
+    for (int i = 0; i < OS_DEFAULT_DISKSPACE_SIZE; i++) {
         disk.push_back(false);
     }
 }
@@ -229,7 +229,7 @@ void AE::LoadData(Process* p_process, VirtualAddress vaddress) {
     for (int i = 0; i < disk.GetSize(); i++) {
         if (disk.GetDiskAddress(i) == false) {
             disk.GetDiskAddress(i) = true;
-            SwapIndex.push_back({ p_process, vaddress, daddress });
+            SwapIndex.push_back({ p_process, vaddress, i });
             g_pOS->GetRequester().DeleteRequest();
             Schedule(GetTime(), this, AE::ProcessRequest);
             return;
@@ -266,15 +266,15 @@ void AE::ProcessRequest() {
 };
 
 void AE::Work() {
-
+    //
 }
 
 void AE::Wait() {
-
+    //
 }
 
 void AE::Start() {
-
+    //
 }
 
 
@@ -284,20 +284,20 @@ Process::Process() {
 };
 
 void Process::Work(SimulatorTime time_limit) {
-    /*Код, имитирующий работу*/
+    /*пїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ*/
 
-    idf (g_pSim->GetTime >= time_limit) {
+    if (g_pSim->GetTime() >= time_limit) {
         g_pOS->GetScheduler().PutInTheEnd();
         Schedule(GetTime(), g_pOS, OS::ProcessQueue);
     }
 }
 
 void Process::Wait() {
-
+    //
 }
 
 void Process::Start() {
-
+    //
 }
 
 void Process::SetRequestedMemory(uint64_t value) {
@@ -310,7 +310,7 @@ uint64_t Process::GetRequestedMemory() {
 
 
 
-int randomizer(int max) { // Функция, возвращающая любое число от 0 до max-1.
+int randomizer(int max) { // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 0 пїЅпїЅ max-1.
     srand(unsigned(clock()));
     return rand() % max;
 };
