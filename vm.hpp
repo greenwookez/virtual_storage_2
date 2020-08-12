@@ -1,6 +1,5 @@
 #include <vector>
 #include <ctime>
-#include <exception>
 #include "sim.hpp"
 
 using namespace std;
@@ -29,53 +28,62 @@ typedef PageNumber DiskAddress;
 struct RequestStruct;
 class Process;
 
+struct TTStruct {
+    VirtualAddress vaddress;
+    RealAddress raddress;
+    bool is_valid;
+};
+
+class TT {
+    Process* p_process;
+
+    vector <TTStruct> records;
+
+public:
+    TT(Process* _p_process, PageNumber size);
+
+    TTStruct& GetRecord(VirtualAddress vaddress);
+    int GetSize();
+    Process* GetProcess();
+};
+
+class RAM {
+    vector <bool> ram; // true means already in use
+public:
+    RAM();
+    bool GetRealAddress(PageNumber raddress);
+    void SetRealAddress(PageNumber raddress, bool value);
+    int GetSize();
+};
+
+class Requester {
+    vector <RequestStruct> request_queue;
+public:
+    void AddRequest(Process* p_process, VirtualAddress vaddress, bool load_flag);
+    void DeleteRequest();
+    RequestStruct GetRequest();
+    bool IsEmpty();
+};
+
+class Scheduler {
+    vector <Process*> process_queue;
+public:
+    void AddProcess(Process* p_process);
+    void DeleteProcess(Process* p_process);
+    void PutInTheEnd();
+    Process* GetProcess();
+    bool IsEmpty();
+};
+
 class OS : public Agent {
-    class TT {
-        Process* p_process;
-
-        struct TTStruct {
-            VirtualAddress vaddress;
-            RealAddress raddress;
-            bool is_valid;
-        };
-
-        vector <TTStruct> records;
-
-    public:
-        TT(Process* _p_process, PageNumber size);
-        TTStruct& GetRecord(VirtualAddress vaddress);
-        Process* GetProcess();
-    };
     vector <TT> translation_tables;
 
-    class RAM {
-        vector <bool> ram; // true means already in use
-    public:
-        RAM();
-        bool GetRealAddress(PageNumber raddress);
-        void SetRealAddress(PageNumber raddress, bool value);
-        int GetSize();
-    } ram;
+    RAM ram;
 
 
-    class Requester {
-        vector <RequestStruct> request_queue;
-    public:
-        void AddRequest(Process* p_process, VirtualAddress vaddress, bool load_flag);
-        void DeleteRequest();
-        RequestStruct GetRequest();
-        bool IsEmpty();
-    } requester;
+    Requester requester;
 
-    class Scheduler {
-        vector <Process*> process_queue;
-    public:
-        void AddProcess(Process* p_process);
-        void DeleteProcess(Process* p_process);
-        void PutInTheEnd();
-        Process* GetProcess();
-        bool IsEmpty();
-    } scheduler;
+    Scheduler scheduler;
 
 public:
     void HandelInterruption(VirtualAddress vaddress, Process* p_process);
@@ -101,15 +109,18 @@ public:
     void Start();
 };
 
-class AE : public Agent {
-    class DiskSpace {
-        vector <bool> disk;  // true means already in use
+class DiskSpace {
+    vector <bool> disk;  // true means already in use
 
-    public:
-        DiskSpace();
-        bool& GetDiskAddress(PageNumber daddress);
-        int GetSize();
-    } disk;
+public:
+    DiskSpace();
+    bool GetDiskAddress(PageNumber daddress);
+    void SetDiskAddress(PageNumber daddress, bool value);
+    int GetSize();
+};
+
+class AE : public Agent {
+    DiskSpace disk;
 
     struct SwapIndexStruct {
         Process* p_process;
@@ -134,12 +145,15 @@ class Process : public Agent {
 
 public:
     Process();
+    void MemoryRequest(VirtualAddress vaddress);
+    void SetRequestedMemory(uint64_t value);
+    uint64_t GetRequestedMemory();
+
     void Work(SimulatorTime time_limit);
     void Wait();
     void Start();
 
-    void SetRequestedMemory(uint64_t value);
-    uint64_t GetRequestedMemory();
+
 };
 
 int randomizer(int max);

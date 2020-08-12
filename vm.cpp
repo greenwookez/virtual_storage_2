@@ -1,48 +1,52 @@
 #include "vm.hpp"
+
 struct RequestStruct;
 
-using namespace std;
 
-OS::TT::TT(Process* _p_process, PageNumber size) {
-    for (int i = 0; i < size; i++) {
+TT::TT(Process* _p_process, PageNumber size) {
+    for (int i = 0; i < (int)size; i++) {
         records.push_back({ (VirtualAddress)i, 0, false });
     }
     p_process = _p_process;
 }
 
-TTStruct& OS::TT::GetRecord(VirtualAddress vaddress) {
-    for (int i = 0; i < records.size(); i++) {
+TTStruct& TT::GetRecord(VirtualAddress vaddress) {
+    for (int i = 0; i < (int)records.size(); i++) {
         if (records[i].vaddress == vaddress) {
-            //return records[i];
+            return records[i];
         }
     }
 
-    // throw exception("RECORD NOT FOUND");
+    __throw_logic_error("RECORD NOT FOUND");
 }
 
-Process* OS::TT::GetProcess() {
+int TT::GetSize() {
+    return (int)records.size();
+}
+
+Process* TT::GetProcess() {
     return p_process;
 }
 
-OS::RAM::RAM() {
-    for (int i = 0; i < OS_DEFAULT_RAM_SIZE; i++) {
+RAM::RAM() {
+    for (int i = 0; i < (int)OS_DEFAULT_RAM_SIZE; i++) {
         ram.push_back(false);
     }
 }
 
-bool OS::RAM::GetRealAddress(PageNumber raddress) {
+bool RAM::GetRealAddress(PageNumber raddress) {
     return ram[raddress];
 }
 
-void OS::RAM::SetRealAddress(PageNumber raddress, bool value) {
+void RAM::SetRealAddress(PageNumber raddress, bool value) {
     ram[raddress] = value;
 }
 
-int OS::RAM::GetSize() {
+int RAM::GetSize() {
     return ram.size();
 }
 
-void OS::Requester::AddRequest(Process* p_process, VirtualAddress vaddress, bool load_flag) {
+void Requester::AddRequest(Process* p_process, VirtualAddress vaddress, bool load_flag) {
     if (IsEmpty()) {
         Schedule(g_pSim->GetTime(), g_pAE, AE::ProcessRequest);
     }
@@ -50,7 +54,7 @@ void OS::Requester::AddRequest(Process* p_process, VirtualAddress vaddress, bool
     request_queue.push_back({ load_flag, p_process, vaddress });
 }
 
-void OS::Requester::DeleteRequest(/*Process* p_process, VirtualAddress vaddress*/) {
+void Requester::DeleteRequest(/*Process* p_process, VirtualAddress vaddress*/) {
     /*for (int i = 0; i < request_queue.size(); i++) {
         if (request_queue[i].p_process == p_process && request_queue[i].vaddress == vaddress) {
             
@@ -64,24 +68,26 @@ void OS::Requester::DeleteRequest(/*Process* p_process, VirtualAddress vaddress*
     request_queue.erase(request_queue.begin());
 }
 
-RequestStruct OS::Requester::GetRequest() {
+RequestStruct Requester::GetRequest() {
     return request_queue[0];
 }
 
-bool OS::Requester::IsEmpty() {
+bool Requester::IsEmpty() {
     return request_queue.empty();
 }
 
-void OS::Scheduler::AddProcess(Process* p_process) {
+void Scheduler::AddProcess(Process* p_process) {
     if (IsEmpty()) {
-        Schedule(g_pSim->GetTime(), this, OS::ProcessQueue);
+        // Если очередь пуста, планируем событие обработки этой очереди
+        Schedule(g_pSim->GetTime(), g_pOS, OS::ProcessQueue);
     }
 
+    // Добавляем процесс в очередь кандидатов
     process_queue.push_back(p_process);
 }
 
-void OS::Scheduler::DeleteProcess(Process* p_process) {
-    for (int i = 0; i < process_queue.size(); i++) {
+void Scheduler::DeleteProcess(Process* p_process) {
+    for (int i = 0; i < (int)process_queue.size(); i++) {
         if (process_queue[i] == p_process) {
 
             process_queue.erase(process_queue.begin() + i);
@@ -89,76 +95,115 @@ void OS::Scheduler::DeleteProcess(Process* p_process) {
         }
     }
 
-    // throw exception("PROCESS NOT FOUND IN QUEUE");
+    // Если процесс не был найден в очереди кандидатов на ЦП, выбрасываем
+    // исключение
+    __throw_logic_error("PROCESS NOT FOUND IN QUEUE");
 }
 
-void OS::Scheduler::PutInTheEnd() {
+void Scheduler::PutInTheEnd() {
+    // Ставим первый процесс в очереди в конец этой очереди
+    // P.S. Здесь речь идет об очереди кандидатов на ЦП
     Process* tmp = process_queue[0];
     process_queue.erase(process_queue.begin());
     process_queue.push_back(tmp);
 }
 
-Process* OS::Scheduler::GetProcess() {
+Process* Scheduler::GetProcess() {
+    // Возвращаем указатель на первый в очереди процесс
     return process_queue[0];
 }
 
-bool OS::Scheduler::IsEmpty() {
+bool Scheduler::IsEmpty() {
     return process_queue.empty();
 }
 
-void OS::HandelInterruption(VirtualAddress vaddress, Process* p_process) {
+// void OS::ProcessQueue() {
+//     // Событие обработки очереди кандидатов на ЦП
 
+//     // Устанавливаем лимит по времени на работу одного процесса с ЦП
+//     SimulatorTime time_limit = g_pSim->GetTime() + OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT;
+//     // Планируем саму работу процесса
+//     Schedule(GetTime(), scheduler.GetProcess(), Process::Work, time_limit);
+// }
+
+void OS::HandelInterruption(VirtualAddress vaddress, Process* p_process) {
+    Schedule(GetTime(), g_pOS, OS::Allocate, vaddress, p_process);
 }
 
 void OS::LoadProcess(Process* p_process) {
-    TT tmp(p_process, p_process->GetRequestedMemory());
-    translation_tables.push_back(tmp);
+    // Создаём новую ТП для процесса
+    translation_tables.push_back(TT(p_process, p_process->GetRequestedMemory()));
 
+    // Добавляем этот процесс в очередь претендентов на ЦП
     scheduler.AddProcess(p_process);
 }
 
 void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
     for (int i = 0; i < ram.GetSize(); i++) {
         if (ram.GetRealAddress(i) == false) {
+            // Устанавливаем флаг распределенности для найденного
             ram.SetRealAddress(i, true);
             
+            // Вносим изменение в ТП процесса о новом соответствии виртуального адреса
+            // реальному
             FindTT(p_process).GetRecord(vaddress).raddress = i;
+            // А также о том, что реальный адрес действителен
             FindTT(p_process).GetRecord(vaddress).is_valid = true;
             return;
         }
     }
-
+    
+    // Если нераспределенного реального адреса найдено не было, необходимо перераспределение
+    // существующих реальных адресов. Вызываем соответсвующую подпрограмму
     Substitute(vaddress, p_process);
 }
 
 void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
-    RealAddress candidate = (RealAddress)randomizer(ram.GetSize());
+    RealAddress candidate_raddress = (RealAddress)randomizer(ram.GetSize());
+    Process* candidate_process;
+    VirtualAddress candidate_vaddress;
+    for (int i = 0; i < translation_tables.size(); i++) {
+        for (int j = 0; j < translation_tables[i].GetSize(); i++) {
+            if (translation_tables[i].GetRecord(j).raddress == candidate_raddress && translation_tables[i].GetRecord(j).is_valid == true) {
+                // Из найденной записи выделяем виртуальный адрес и указатель на процесс,
+                // у которого отнимаем память
+                candidate_vaddress = translation_tables[i].GetRecord(j).vaddress;
+                candidate_process = translation_tables[i].GetProcess();
+
+                // Вносим изменение в запись в ТП у процесса, у которого отнимаем память
+                translation_tables[i].GetRecord(j).is_valid == false;
+                break;
+            }
+        }
+    }
     
-    requester.AddRequest(p_process, vaddress, true);
+    // Если указатель на процесс или виртуальный адрес не изменились, значит в цикле
+    // не была найдена информация о кандидата на перераспределение
+    if (candidate_process == nullptr) {
+        __throw_logic_error("NO INFO IN TTS FOUND FOR CANDIDATE");
+    }
+
+    // В очередь запросов добавляем новый запрос на загрузку данных в АС из виртуального
+    // адреса кандидата
+    requester.AddRequest(candidate_process, candidate_vaddress, true);
 }
 
 TT& OS::FindTT(Process* p_process) {
-    for (int i = 0; i < translation_tables.size(); i++) {
+    for (int i = 0; i < (int)translation_tables.size(); i++) {
         if (translation_tables[i].GetProcess() == p_process) {
-            // return translation_tables[i];
+            return translation_tables[i];
         }
     }
 
-    // throw exception("TT NOT FOUND");
+    __throw_logic_error("TT NOT FOUND");
 }
 
 Requester& OS::GetRequester() {
-    // return requester;
+    return requester;
 }
 
 Scheduler& OS::GetScheduler() {
-    // return scheduler;
-}
-
-
-void OS::ProcessQueue() {
-    SimulatorTime time_limit = g_pSim->GetTime() + OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT;
-    Schedule(GetTime(), scheduler.GetProcess(), Process::Work, time_limit);
+    return scheduler;
 }
 
 void OS::Work() {
@@ -199,39 +244,43 @@ void CPU::Start() {
 
 
 
-AE::DiskSpace::DiskSpace() {
-    for (int i = 0; i < OS_DEFAULT_DISKSPACE_SIZE; i++) {
+DiskSpace::DiskSpace() {
+    for (int i = 0; i < (int)OS_DEFAULT_DISKSPACE_SIZE; i++) {
         disk.push_back(false);
     }
 }
 
-bool& AE::DiskSpace::GetDiskAddress(PageNumber daddress) {
-    //return disk[daddress];
+bool DiskSpace::GetDiskAddress(PageNumber daddress) {
+    return disk[daddress];
 }
 
-int AE::DiskSpace::GetSize() {
+void DiskSpace::SetDiskAddress(PageNumber daddress, bool value) {
+    disk[daddress] = value;
+}
+
+int DiskSpace::GetSize() {
     return disk.size();
 }
 
 void AE::LoadData(Process* p_process, VirtualAddress vaddress) {
     for (int i = 0; i < disk.GetSize(); i++) {
         if (disk.GetDiskAddress(i) == false) {
-            disk.GetDiskAddress(i) = true;
-            SwapIndex.push_back({ p_process, vaddress, i });
+            disk.SetDiskAddress(i, true);
+            SwapIndex.push_back({ p_process, vaddress, (DiskAddress)i });
             g_pOS->GetRequester().DeleteRequest();
             Schedule(GetTime(), this, AE::ProcessRequest);
             return;
         }
     }
 
-    // throw exception("NO FREE DISK SPACE");
+    __throw_logic_error("NO FREE DISK SPACE");
 }
 
 void AE::PopData(Process* p_process, VirtualAddress vaddress) {
-    for (int i = 0; i < SwapIndex.size(); i++) {
+    for (int i = 0; i < (int)SwapIndex.size(); i++) {
         if (SwapIndex[i].p_process == p_process && SwapIndex[i].vaddress == vaddress) {
             SwapIndex.erase(SwapIndex.begin() + i);
-            disk.GetDiskAddress(i) = false;
+            disk.SetDiskAddress(i, false) ;
             
             g_pOS->GetRequester().DeleteRequest();
             Schedule(GetTime(), this, AE::ProcessRequest);
@@ -239,7 +288,7 @@ void AE::PopData(Process* p_process, VirtualAddress vaddress) {
         }
     }
 
-    // throw exception("SWAP INDEX RECORD NOT FOUND");
+    __throw_logic_error("SWAP INDEX RECORD NOT FOUND");
 }
 
 void AE::ProcessRequest() {
@@ -274,10 +323,12 @@ Process::Process() {
 void Process::Work(SimulatorTime time_limit) {
     
 
-    if (g_pSim->GetTime() >= time_limit) {
-        g_pOS->GetScheduler().PutInTheEnd();
-        Schedule(GetTime(), g_pOS, OS::ProcessQueue);
-    }
+    // if (g_pSim->GetTime() >= time_limit) {
+    //     g_pOS->GetScheduler().PutInTheEnd();
+    //     Schedule(GetTime(), g_pOS, OS::ProcessQueue);
+    // } else {
+    //     Schedule();
+    // }
 }
 
 void Process::Wait() {
@@ -285,7 +336,7 @@ void Process::Wait() {
 }
 
 void Process::Start() {
-    //
+    Schedule(GetTime(), g_pOS, OS::LoadProcess, this)
 }
 
 void Process::SetRequestedMemory(uint64_t value) {
