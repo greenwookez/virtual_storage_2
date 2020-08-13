@@ -6,7 +6,7 @@ using namespace std;
 
 const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 0;
 
-const SimulatorTime CPU_DEFAULT_TIME_FOR_COMVERSION = 0;
+const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 0;
 
 const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 0;
 const uint64_t OS_DEFAULT_RAM_SIZE = 0;
@@ -77,12 +77,8 @@ public:
 
 class OS : public Agent {
     vector <TT> translation_tables;
-
     RAM ram;
-
-
     Requester requester;
-
     Scheduler scheduler;
 
 public:
@@ -94,6 +90,7 @@ public:
     Requester& GetRequester();
     Scheduler& GetScheduler();
     void ProcessQueue();
+    void ChangeQueue();
 
     void Work();
     void Wait();
@@ -134,6 +131,7 @@ class AE : public Agent {
     void PopData(Process* p_process, VirtualAddress vaddress);
 public:
     void ProcessRequest();
+    bool IsLoaded(Process* p_process, VirtualAddress vaddress);
 
     void Work();
     void Wait();
@@ -142,14 +140,15 @@ public:
 
 class Process : public Agent {
     PageNumber requested_memory;
-
+    SimulatorTime time_limit;
 public:
     Process();
     void MemoryRequest(VirtualAddress vaddress);
     void SetRequestedMemory(uint64_t value);
     uint64_t GetRequestedMemory();
-
-    void Work(SimulatorTime time_limit);
+    void SetTimeLimit(SimulatorTime value);
+    SimulatorTime GetTimeLimit();
+    void Work();
     void Wait();
     void Start();
 

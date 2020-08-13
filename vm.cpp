@@ -102,7 +102,7 @@ void Scheduler::DeleteProcess(Process* p_process) {
 
 void Scheduler::PutInTheEnd() {
     // Ставим первый процесс в очереди в конец этой очереди
-    // P.S. Здесь речь идет об очереди кандидатов на ЦП
+    // (Здесь речь идет об очереди кандидатов на ЦП)
     Process* tmp = process_queue[0];
     process_queue.erase(process_queue.begin());
     process_queue.push_back(tmp);
@@ -117,17 +117,30 @@ bool Scheduler::IsEmpty() {
     return process_queue.empty();
 }
 
-// void OS::ProcessQueue() {
-//     // Событие обработки очереди кандидатов на ЦП
+void OS::ProcessQueue() {
+    // Событие обработки очереди кандидатов на ЦП
 
-//     // Устанавливаем лимит по времени на работу одного процесса с ЦП
-//     SimulatorTime time_limit = g_pSim->GetTime() + OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT;
-//     // Планируем саму работу процесса
-//     Schedule(GetTime(), scheduler.GetProcess(), Process::Work, time_limit);
-// }
+    // Устанавливаем лимит по времени на работу одного процесса с ЦП
+    scheduler.GetProcess()->SetTimeLimit(OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT);
+    // Планируем саму работу процесса
+    Schedule(GetTime(), scheduler.GetProcess(), Process::Work);
+}
+
+void OS::ChangeQueue() {
+    scheduler.GetProcess()->SetTimeLimit(0);
+    scheduler.PutInTheEnd();
+    Schedule(GetTime(), g_pOS, OS::ProcessQueue);
+}
 
 void OS::HandelInterruption(VirtualAddress vaddress, Process* p_process) {
     Schedule(GetTime(), g_pOS, OS::Allocate, vaddress, p_process);
+
+    // Если по виртуальному адресу vaddress есть данные в АС, необходимо их
+    // выгрузить
+    
+    if (g_pAE->IsLoaded(p_process, vaddress)) {
+        requester.AddRequest(p_process, vaddress, false);
+    }
 }
 
 void OS::LoadProcess(Process* p_process) {
@@ -149,6 +162,13 @@ void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
             FindTT(p_process).GetRecord(vaddress).raddress = i;
             // А также о том, что реальный адрес действителен
             FindTT(p_process).GetRecord(vaddress).is_valid = true;
+            
+            if (GetTime() < g_pOS->GetScheduler().GetProcess()->GetTimeLimit()) {
+                Schedule(GetTime(), g_pOS->GetScheduler().GetProcess(), Process::Work);
+            } else {
+                Schedule(GetTime(), g_pOS, OS::ChangeQueue);
+            }
+
             return;
         }
     }
@@ -171,7 +191,7 @@ void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
                 candidate_process = translation_tables[i].GetProcess();
 
                 // Вносим изменение в запись в ТП у процесса, у которого отнимаем память
-                translation_tables[i].GetRecord(j).is_valid == false;
+                translation_tables[i].GetRecord(j).is_valid = false;
                 break;
             }
         }
@@ -186,6 +206,12 @@ void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
     // В очередь запросов добавляем новый запрос на загрузку данных в АС из виртуального
     // адреса кандидата
     requester.AddRequest(candidate_process, candidate_vaddress, true);
+
+    if (GetTime() < g_pOS->GetScheduler().GetProcess()->GetTimeLimit()) {
+        Schedule(GetTime(), g_pOS->GetScheduler().GetProcess(), Process::Work);
+    } else {
+        Schedule(GetTime(), g_pOS, OS::ChangeQueue);
+    }
 }
 
 TT& OS::FindTT(Process* p_process) {
@@ -222,11 +248,15 @@ void OS::Start() {
 
 void CPU::Convert(VirtualAddress vaddress, Process *p_process) {
     if (g_pOS->FindTT(p_process).GetRecord(vaddress).is_valid == false) {
-        Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_COMVERSION, g_pOS, OS::HandelInterruption, vaddress, p_process);
+        Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, OS::HandelInterruption, vaddress, p_process);
         return;
     }
     else {
-        // Sucessful conversion
+        if (GetTime() < g_pOS->GetScheduler().GetProcess()->GetTimeLimit()) {
+            Schedule(GetTime(), g_pOS->GetScheduler().GetProcess(), Process::Work);
+        } else {
+            Schedule(GetTime(), g_pOS, OS::ChangeQueue);
+        }
     }
 }
 
@@ -300,6 +330,16 @@ void AE::ProcessRequest() {
         Schedule(GetTime(), this, AE::PopData, tmp.p_process, tmp.loading_address);
     }
     return;
+}
+
+bool AE::IsLoaded(Process* p_process, VirtualAddress vaddress) {
+    for (int i = 0; i < SwapIndex.size(); i++) {
+        if (SwapIndex[i].p_process == p_process && SwapIndex[i].vaddress == vaddress) {
+            return true;
+        }
+    }
+
+    return false;
 };
 
 void AE::Work() {
@@ -320,7 +360,7 @@ Process::Process() {
     requested_memory = PROCESS_DEFAULT_REQUESTED_MEMORY;
 };
 
-void Process::Work(SimulatorTime time_limit) {
+void Process::Work() {
     
 
     // if (g_pSim->GetTime() >= time_limit) {
@@ -336,7 +376,7 @@ void Process::Wait() {
 }
 
 void Process::Start() {
-    Schedule(GetTime(), g_pOS, OS::LoadProcess, this)
+    Schedule(GetTime(), g_pOS, OS::LoadProcess, this);
 }
 
 void Process::SetRequestedMemory(uint64_t value) {
@@ -347,7 +387,13 @@ uint64_t Process::GetRequestedMemory() {
     return requested_memory;
 }
 
+void Process::SetTimeLimit(SimulatorTime value) {
+    time_limit = value;
+}
 
+SimulatorTime Process::GetTimeLimit() {
+    return time_limit;
+}
 
 int randomizer(int max) {
     srand(unsigned(clock()));
