@@ -4,27 +4,33 @@
 
 using namespace std;
 
-const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 0;
-
-const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 0;
-
-const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 0;
-const uint64_t OS_DEFAULT_RAM_SIZE = 0;
-const uint64_t OS_DEFAULT_DISKSPACE_SIZE = 0;
-
-const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 0;
-
+//TIME CONSTs
 const SimulatorTime nanoSec = 1;
 const SimulatorTime microSec = 1000000;
 const SimulatorTime Sec = 1000000000;
 const SimulatorTime Minute = Sec * 60;
 const SimulatorTime Hour = Minute * 60;
 
+//CONFIG
+const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec;
+
+const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 1;
+
+const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 1000*nanoSec;
+const uint64_t OS_DEFAULT_RAM_SIZE = 512;
+const uint64_t OS_DEFAULT_DISKSPACE_SIZE = 5000;
+const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec;
+
+const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 50;
+
+//TYPES
 typedef uint64_t PageNumber;
 typedef PageNumber VirtualAddress;
 typedef PageNumber RealAddress;
 typedef PageNumber DiskAddress;
 
+
+//HEADER FILE
 struct RequestStruct;
 class Process;
 
@@ -59,7 +65,7 @@ public:
 class Requester {
     vector <RequestStruct> request_queue;
 public:
-    void AddRequest(Process* p_process, VirtualAddress vaddress, bool load_flag);
+    void AddRequest(Process* p_process, VirtualAddress vaddress, RealAddress raddress, bool load_flag);
     void DeleteRequest();
     RequestStruct GetRequest();
     bool IsEmpty();
@@ -82,7 +88,8 @@ class OS : public Agent {
     Scheduler scheduler;
 
 public:
-    void HandelInterruption(VirtualAddress vaddress, Process* p_process);
+    OS();
+    void HandelInterruption(VirtualAddress vaddress, RealAddress raddress, Process* p_process);
     void LoadProcess(Process* _p_process);
     void Allocate(VirtualAddress vaddress, Process* p_process);
     void Substitute(VirtualAddress vaddress, Process* p_process);
@@ -99,6 +106,7 @@ public:
 
 class CPU : public Agent {
 public:
+    CPU();
     void Convert(VirtualAddress vaddress, Process* p_process);
 
     void Work();
@@ -127,9 +135,10 @@ class AE : public Agent {
 
     vector <SwapIndexStruct> SwapIndex;
 
-    void LoadData(Process* p_process, VirtualAddress vaddress);
-    void PopData(Process* p_process, VirtualAddress vaddress);
+    void LoadData();
+    void PopData();
 public:
+    AE();
     void ProcessRequest();
     bool IsLoaded(Process* p_process, VirtualAddress vaddress);
 
@@ -164,5 +173,6 @@ extern AE* g_pAE;
 struct RequestStruct {
     bool load_flag;
     Process* p_process;
-    VirtualAddress loading_address;
+    VirtualAddress vaddress;
+    RealAddress raddress;
 };

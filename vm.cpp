@@ -1,5 +1,5 @@
 #include "vm.hpp"
-
+#include <iostream>
 struct RequestStruct;
 
 
@@ -46,12 +46,12 @@ int RAM::GetSize() {
     return ram.size();
 }
 
-void Requester::AddRequest(Process* p_process, VirtualAddress vaddress, bool load_flag) {
+void Requester::AddRequest(Process* p_process, VirtualAddress vaddress, RealAddress raddress, bool load_flag) {
     if (IsEmpty()) {
         Schedule(g_pSim->GetTime(), g_pAE, AE::ProcessRequest);
     }
 
-    request_queue.push_back({ load_flag, p_process, vaddress });
+    request_queue.push_back({ load_flag, p_process, vaddress, raddress });
 }
 
 void Requester::DeleteRequest(/*Process* p_process, VirtualAddress vaddress*/) {
@@ -121,7 +121,7 @@ void OS::ProcessQueue() {
     // Событие обработки очереди кандидатов на ЦП
 
     // Устанавливаем лимит по времени на работу одного процесса с ЦП
-    scheduler.GetProcess()->SetTimeLimit(OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT);
+    scheduler.GetProcess()->SetTimeLimit(GetTime() + OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT);
     // Планируем саму работу процесса
     Schedule(GetTime(), scheduler.GetProcess(), Process::Work);
 }
@@ -132,14 +132,18 @@ void OS::ChangeQueue() {
     Schedule(GetTime(), g_pOS, OS::ProcessQueue);
 }
 
-void OS::HandelInterruption(VirtualAddress vaddress, Process* p_process) {
+OS::OS() {
+    SetName("OS");
+}
+
+void OS::HandelInterruption(VirtualAddress vaddress, RealAddress raddress,  Process* p_process) {
     Schedule(GetTime(), g_pOS, OS::Allocate, vaddress, p_process);
 
     // Если по виртуальному адресу vaddress есть данные в АС, необходимо их
     // выгрузить
     
     if (g_pAE->IsLoaded(p_process, vaddress)) {
-        requester.AddRequest(p_process, vaddress, false);
+        requester.AddRequest(p_process, vaddress, raddress, false);
     }
 }
 
@@ -162,13 +166,15 @@ void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
             FindTT(p_process).GetRecord(vaddress).raddress = i;
             // А также о том, что реальный адрес действителен
             FindTT(p_process).GetRecord(vaddress).is_valid = true;
-            
+
             if (GetTime() < g_pOS->GetScheduler().GetProcess()->GetTimeLimit()) {
                 Schedule(GetTime(), g_pOS->GetScheduler().GetProcess(), Process::Work);
             } else {
                 Schedule(GetTime(), g_pOS, OS::ChangeQueue);
             }
 
+
+            Log("Allocate RA=" + to_string(i) + " as VA=" + to_string(vaddress) + " " + p_process->GetName() + ", resume");
             return;
         }
     }
@@ -182,7 +188,7 @@ void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
     RealAddress candidate_raddress = (RealAddress)randomizer(ram.GetSize());
     Process* candidate_process;
     VirtualAddress candidate_vaddress;
-    for (int i = 0; i < translation_tables.size(); i++) {
+    for (int i = 0; i < (int)translation_tables.size(); i++) {
         for (int j = 0; j < translation_tables[i].GetSize(); i++) {
             if (translation_tables[i].GetRecord(j).raddress == candidate_raddress && translation_tables[i].GetRecord(j).is_valid == true) {
                 // Из найденной записи выделяем виртуальный адрес и указатель на процесс,
@@ -205,13 +211,15 @@ void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
 
     // В очередь запросов добавляем новый запрос на загрузку данных в АС из виртуального
     // адреса кандидата
-    requester.AddRequest(candidate_process, candidate_vaddress, true);
+    requester.AddRequest(candidate_process, candidate_vaddress, candidate_raddress, true);
 
     if (GetTime() < g_pOS->GetScheduler().GetProcess()->GetTimeLimit()) {
-        Schedule(GetTime(), g_pOS->GetScheduler().GetProcess(), Process::Work);
+        Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS->GetScheduler().GetProcess(), Process::Work);
     } else {
         Schedule(GetTime(), g_pOS, OS::ChangeQueue);
     }
+
+    Log("Deallocate RA=" + to_string(candidate_raddress) + " " + candidate_process->GetName());
 }
 
 TT& OS::FindTT(Process* p_process) {
@@ -246,12 +254,22 @@ void OS::Start() {
 
 
 
+CPU::CPU() {
+    SetName("CPU");
+}
+
 void CPU::Convert(VirtualAddress vaddress, Process *p_process) {
-    if (g_pOS->FindTT(p_process).GetRecord(vaddress).is_valid == false) {
-        Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, OS::HandelInterruption, vaddress, p_process);
+    TTStruct tmp = g_pOS->FindTT(p_process).GetRecord(vaddress);
+    if (tmp.is_valid == false) {
+        // Прерывание по отсутствию страницы
+        Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, OS::HandelInterruption, vaddress, tmp.raddress, p_process);
+        Log("Translate VA=" + to_string(vaddress) + " " + p_process->GetName() + " -> Interrupt");
         return;
     }
     else {
+        // Успешное преобразование
+        Log("Translate VA=" + to_string(vaddress) + " " + p_process->GetName() + " -> RA=" + to_string(tmp.raddress));
+        g_pSim->GetTime() += CPU_DEFAULT_TIME_FOR_CONVERSION;
         if (GetTime() < g_pOS->GetScheduler().GetProcess()->GetTimeLimit()) {
             Schedule(GetTime(), g_pOS->GetScheduler().GetProcess(), Process::Work);
         } else {
@@ -292,13 +310,20 @@ int DiskSpace::GetSize() {
     return disk.size();
 }
 
-void AE::LoadData(Process* p_process, VirtualAddress vaddress) {
+AE::AE() {
+    SetName("AE");
+}
+
+void AE::LoadData() {
+    RequestStruct tmp = g_pOS->GetRequester().GetRequest();
     for (int i = 0; i < disk.GetSize(); i++) {
         if (disk.GetDiskAddress(i) == false) {
             disk.SetDiskAddress(i, true);
-            SwapIndex.push_back({ p_process, vaddress, (DiskAddress)i });
+            SwapIndex.push_back({ tmp.p_process, tmp.vaddress, (DiskAddress)i });
             g_pOS->GetRequester().DeleteRequest();
             Schedule(GetTime(), this, AE::ProcessRequest);
+
+            Log("Save RA=" + to_string(tmp.raddress) + " (" + tmp.p_process->GetName() +" VA=" + to_string(tmp.vaddress) + ") -> AA=" + to_string(i));
             return;
         }
     }
@@ -306,14 +331,17 @@ void AE::LoadData(Process* p_process, VirtualAddress vaddress) {
     __throw_logic_error("NO FREE DISK SPACE");
 }
 
-void AE::PopData(Process* p_process, VirtualAddress vaddress) {
+void AE::PopData() {
+    RequestStruct tmp = g_pOS->GetRequester().GetRequest();
     for (int i = 0; i < (int)SwapIndex.size(); i++) {
-        if (SwapIndex[i].p_process == p_process && SwapIndex[i].vaddress == vaddress) {
+        if (SwapIndex[i].p_process == tmp.p_process && SwapIndex[i].vaddress == tmp.vaddress) {
             SwapIndex.erase(SwapIndex.begin() + i);
             disk.SetDiskAddress(i, false) ;
             
             g_pOS->GetRequester().DeleteRequest();
             Schedule(GetTime(), this, AE::ProcessRequest);
+            
+            Log("Pop AA=" + to_string(i) + " (" + tmp.p_process->GetName() + " VA=" + to_string(tmp.vaddress) + ")");
             return;
         }
     }
@@ -324,16 +352,16 @@ void AE::PopData(Process* p_process, VirtualAddress vaddress) {
 void AE::ProcessRequest() {
     RequestStruct tmp = g_pOS->GetRequester().GetRequest();
     if (tmp.load_flag) {
-        Schedule(GetTime(), this, AE::LoadData, tmp.p_process, tmp.loading_address);
+        Schedule(GetTime(), this, AE::LoadData);
     }
     else {
-        Schedule(GetTime(), this, AE::PopData, tmp.p_process, tmp.loading_address);
+        Schedule(GetTime(), this, AE::PopData);
     }
     return;
 }
 
 bool AE::IsLoaded(Process* p_process, VirtualAddress vaddress) {
-    for (int i = 0; i < SwapIndex.size(); i++) {
+    for (int i = 0; i < (int)SwapIndex.size(); i++) {
         if (SwapIndex[i].p_process == p_process && SwapIndex[i].vaddress == vaddress) {
             return true;
         }
@@ -358,17 +386,13 @@ void AE::Start() {
 
 Process::Process() {
     requested_memory = PROCESS_DEFAULT_REQUESTED_MEMORY;
+    time_limit = 0;
 };
 
 void Process::Work() {
-    
+    VirtualAddress vaddress = (VirtualAddress)randomizer(requested_memory);
 
-    // if (g_pSim->GetTime() >= time_limit) {
-    //     g_pOS->GetScheduler().PutInTheEnd();
-    //     Schedule(GetTime(), g_pOS, OS::ProcessQueue);
-    // } else {
-    //     Schedule();
-    // }
+    Schedule(GetTime(), g_pCPU, CPU::Convert, vaddress, this);
 }
 
 void Process::Wait() {

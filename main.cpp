@@ -16,12 +16,11 @@ int main()
     try {
         g_pSim = new Sim;
 
-        const int amount = 15;
+        const int amount = 3;
 
         g_pOS = new OS;
         g_pCPU = new CPU;
         g_pAE = new AE;
-
 
         Process * all_processes[amount];
         for (int i = 0; i < amount; i++) {
@@ -30,7 +29,6 @@ int main()
             all_processes[i]->SetName(name);
             Schedule(g_pSim->GetTime(), all_processes[i], &Process::Start);
         };
-
 
         SimulatorTime limit = 72*Hour;
         g_pSim->SetLimit(limit);
