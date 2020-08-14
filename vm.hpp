@@ -20,8 +20,11 @@ const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 1000*nanoSec;
 const uint64_t OS_DEFAULT_RAM_SIZE = 512;
 const uint64_t OS_DEFAULT_DISKSPACE_SIZE = 5000;
 const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec;
+const uint64_t OS_DEFAULT_SUBSTITUTE_COUNTER_LIMIT = 100000;
 
+const SimulatorTime PROCESS_DEFAULT_WORK_TIME = 0;
 const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 50;
+
 
 //TYPES
 typedef uint64_t PageNumber;
@@ -69,6 +72,8 @@ public:
     void DeleteRequest();
     RequestStruct GetRequest();
     bool IsEmpty();
+
+    void PrintQueue();
 };
 
 class Scheduler {

@@ -16,7 +16,7 @@ int main()
     try {
         g_pSim = new Sim;
 
-        const int amount = 3;
+        const int amount = 15;
 
         g_pOS = new OS;
         g_pCPU = new CPU;
@@ -60,6 +60,11 @@ int main()
     catch(exception& ex) {
         cout << ex.what() << endl;
     }
+    catch(Requester& err) {
+        cout << "NO INFO IN TTS FOUND FOR CANDIDATE" << endl;
+        err.PrintQueue();
+    }
 
+    cout << "Returns 0" << endl;
     return 0;
 }
