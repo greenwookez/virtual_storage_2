@@ -30,7 +30,7 @@ int main()
             Schedule(g_pSim->GetTime(), all_processes[i], &Process::Start);
         };
 
-        SimulatorTime limit = 72*Hour;
+        SimulatorTime limit = 100*Sec   ;
         g_pSim->SetLimit(limit);
         while(!g_pSim->Run())
         {

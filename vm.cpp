@@ -89,7 +89,7 @@ void Requester::PrintQueue() {
     if (request_queue.size() == 0) {
         std::cout << "Request Queue is Empty." << endl;
     } else {
-        for (int i = 0; i < request_queue.size(); i++) {
+        for (int i = 0; i < static_cast<int>(request_queue.size()); i++) {
             std::cout << "{" << request_queue[i].load_flag << "} {" <<
             request_queue[i].p_process << "} {" << request_queue[i].vaddress <<
             "} {" << request_queue[i].raddress << "}" << endl;
@@ -242,6 +242,12 @@ void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
     // В очередь запросов добавляем новый запрос на загрузку данных в АС из виртуального
     // адреса кандидата
     requester.AddRequest(candidate_process, candidate_vaddress, candidate_raddress, true);
+
+    // Вносим изменение в ТП процесса о новом соответствии виртуального адреса
+    // реальному
+    FindTT(p_process).GetRecord(vaddress).raddress = candidate_raddress;
+    // А также о том, что реальный адрес действителен
+    FindTT(p_process).GetRecord(vaddress).is_valid = true;
 
     if (GetTime() < g_pOS->GetScheduler().GetProcess()->GetTimeLimit()) {
         Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS->GetScheduler().GetProcess(), Process::Work);
@@ -400,7 +406,7 @@ bool AE::IsLoaded(Process* p_process, VirtualAddress vaddress) {
     }
 
     return false;
-};
+}
 
 void AE::Work() {
     //
@@ -419,7 +425,7 @@ void AE::Start() {
 Process::Process() {
     requested_memory = PROCESS_DEFAULT_REQUESTED_MEMORY;
     time_limit = 0;
-};
+}
 
 void Process::Work() {
     VirtualAddress vaddress = static_cast<VirtualAddress>(randomizer(requested_memory));
