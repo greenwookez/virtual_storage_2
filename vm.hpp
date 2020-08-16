@@ -12,18 +12,22 @@ const SimulatorTime Minute = Sec * 60;
 const SimulatorTime Hour = Minute * 60;
 
 //CONFIG
-const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec;
 
-const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 10*microSec;
+const bool CONFIG_LOG_ENABLE_EMPTY_STRINGS = false; // включает пустые строки в логе
+const SimulatorTime CONFIG_SIM_TIME_LIMIT = 200*Sec; // лимит времени работы симулятора
 
-const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 1*Sec;
-const uint64_t OS_DEFAULT_RAM_SIZE = 512;
-const uint64_t OS_DEFAULT_DISKSPACE_SIZE = 5000;
-const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec;
-const uint64_t OS_DEFAULT_SUBSTITUTE_COUNTER_LIMIT = 100000;
 
-const SimulatorTime PROCESS_DEFAULT_WORK_TIME = 0;
-const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 50;
+const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec; // время работы устройства ввода/ввывода
+const uint64_t AE_DEFAULT_DISKSPACE_SIZE = 500; // размер файла подкачки в страницах
+
+const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 10*microSec; // время на преобразование адреса процессом
+
+const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 1*Sec; // время, на которое процессу дается ЦП (потом ЦП передается другуму претенденту в очереди)
+const uint64_t OS_DEFAULT_RAM_SIZE = 512; // размер ОП в страницах
+const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec; // время на размещение
+
+const SimulatorTime PROCESS_DEFAULT_WORK_TIME = 0; // время, за которое процесс совершает единицу работы
+const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 50; // память, необходимая процессу в количестве страниц
 
 
 //TYPES
@@ -34,6 +38,11 @@ typedef PageNumber DiskAddress;
 
 
 //HEADER FILE
+class AgentVM : public Agent {
+    public:
+    void Log(string text); // Переопределение логирования для вывода загруженности системы в конце каждого сообщения
+};
+
 struct RequestStruct;
 class Process;
 
@@ -86,7 +95,7 @@ public:
     bool IsEmpty();
 };
 
-class OS : public Agent {
+class OS : public AgentVM {
     vector <TT> translation_tables;
     RAM ram;
     Requester requester;
@@ -104,12 +113,16 @@ public:
     void ProcessQueue();
     void ChangeQueue();
 
+    //For logging
+
+    float ComputeRML();
+
     void Work();
     void Wait();
     void Start();
 };
 
-class CPU : public Agent {
+class CPU : public AgentVM {
 public:
     CPU();
     void Convert(VirtualAddress vaddress, Process* p_process);
@@ -129,7 +142,7 @@ public:
     int GetSize();
 };
 
-class AE : public Agent {
+class AE : public AgentVM {
     DiskSpace disk;
 
     struct SwapIndexStruct {
@@ -142,17 +155,24 @@ class AE : public Agent {
 
     void LoadData();
     void PopData();
+
+    SimulatorTime io_total_time;
 public:
     AE();
     void ProcessRequest();
     bool IsLoaded(Process* p_process, VirtualAddress vaddress);
+
+    //For logging
+    float ComputeAEL();
+    double ComputePSL();
+    
 
     void Work();
     void Wait();
     void Start();
 };
 
-class Process : public Agent {
+class Process : public AgentVM {
     PageNumber requested_memory;
     SimulatorTime time_limit;
 public:

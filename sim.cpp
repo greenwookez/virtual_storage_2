@@ -25,11 +25,11 @@ std::string Agent::GetName()
     return m_name;
 }
 
-void Agent::Log(std::string text)
+void Agent::Log(std::string text, bool empty_strings)
 {
     /* bb */
     std::string name_buffer = g_pSim->GetBuffer();
-    if (name_buffer != m_name)
+    if (name_buffer != m_name && empty_strings)
         std::cout << std::endl;
     /* bb end */
 

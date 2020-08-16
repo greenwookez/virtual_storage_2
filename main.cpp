@@ -11,6 +11,8 @@ OS *g_pOS;
 CPU *g_pCPU;
 AE *g_pAE;
 
+
+extern const SimulatorTime CONFIG_SIM_TIME_LIMIT;
 int main()
 {
     try {
@@ -30,8 +32,7 @@ int main()
             Schedule(g_pSim->GetTime(), all_processes[i], &Process::Start);
         };
 
-        SimulatorTime limit = 100*Sec;
-        g_pSim->SetLimit(limit);
+        g_pSim->SetLimit(CONFIG_SIM_TIME_LIMIT);
         while(!g_pSim->Run())
         {
             PrintTime(&std::cout);
@@ -45,7 +46,7 @@ int main()
                 break;
             };
 
-            g_pSim->SetLimit(g_pSim->GetTime()+limit);
+            g_pSim->SetLimit(g_pSim->GetTime()+CONFIG_SIM_TIME_LIMIT);
         }
 
         for (int i = 0; i < amount; i++) {

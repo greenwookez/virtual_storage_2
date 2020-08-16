@@ -3,6 +3,15 @@
 #include <iomanip>
 struct RequestStruct;
 
+void AgentVM :: Log(string text) {
+    string tail =
+    " || RML=" + to_string(g_pOS->ComputeRML()).substr(0,5) +
+    " AEL=" + to_string(g_pAE->ComputeAEL()).substr(0,5) +
+    " PSL="  + to_string(g_pAE->ComputePSL()).substr(0,5);
+    
+    Agent::Log(text + string(60-text.length(), ' ') + tail, CONFIG_LOG_ENABLE_EMPTY_STRINGS);
+}
+
 TT::TT(Process* _p_process, PageNumber size) {
     for (int i = 0; i < static_cast<int>(size); i++) {
         records.push_back({ static_cast<VirtualAddress>(i), 0, false });
@@ -51,7 +60,10 @@ void Requester::AddRequest(Process* p_process, VirtualAddress vaddress, RealAddr
         Schedule(g_pSim->GetTime(), g_pAE, AE::ProcessRequest);
     }
 
-    string text = "New request (" + p_process->GetName() + " VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " RA=" + string(4 - to_string(raddress).length(), '0') + to_string(raddress) + " LF=" + string(4 - to_string(load_flag).length(), '0') + to_string(load_flag) + ")";
+    string text = "      New request (" + p_process->GetName() + " VA=" 
+    + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) 
+    + " RA=" + string(4 - to_string(raddress).length(), '0') + to_string(raddress) 
+    + " LF=" + to_string(load_flag) + ")";
     PrintTime(&std::cout);
     std::cout << " " << std::setw(10) << std::setfill(' ') << std::right << "Requester"
         << "   " << text << std::endl;
@@ -63,7 +75,10 @@ void Requester::DeleteRequest(Process* p_process, VirtualAddress vaddress) {
     for (int i = 0; i < static_cast<int>(request_queue.size()); i++) {
         if (request_queue[i].p_process == p_process && request_queue[i].vaddress == vaddress) {
             
-            string text = "Delete request (" + request_queue[0].p_process->GetName() + " VA=" + string(4 - to_string(request_queue[0].vaddress).length(), '0') + to_string(request_queue[0].vaddress) + " RA=" + string(4 - to_string(request_queue[0].raddress).length(), '0') + to_string(request_queue[0].raddress) + " LF=" + string(4 - to_string(request_queue[0].load_flag).length(), '0') + to_string(request_queue[0].load_flag) + ")";
+            string text = "      Delete request (" + request_queue[0].p_process->GetName() + " VA=" 
+            + string(4 - to_string(request_queue[0].vaddress).length(), '0') + to_string(request_queue[0].vaddress) 
+            + " RA=" + string(4 - to_string(request_queue[0].raddress).length(), '0') + to_string(request_queue[0].raddress) 
+            + " LF=" + to_string(request_queue[0].load_flag) + ")";
             PrintTime(&std::cout);
             std::cout << " " << std::setw(10) << std::setfill(' ') << std::right << "Requester"
                 << "   " << text << std::endl;
@@ -202,7 +217,7 @@ void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
             }
 
 
-            Log("Allocate RA=" + string(4 - to_string(i).length(), '0') + to_string(i) + " as VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " " + p_process->GetName() + ", resume");
+            Log("  Allocate RA=" + string(4 - to_string(i).length(), '0') + to_string(i) + " as VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " " + p_process->GetName() + ", resume");
             return;
         }
     }
@@ -241,7 +256,7 @@ void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
             }
         }
     }
-    Log("Deallocate RA=" + string(4 - to_string(candidate_raddress).length(), '0') + to_string(candidate_raddress) + " " + candidate_process->GetName());
+    Log("  Deallocate RA=" + string(4 - to_string(candidate_raddress).length(), '0') + to_string(candidate_raddress) + " " + candidate_process->GetName());
     // В очередь запросов добавляем новый запрос на загрузку данных в АС из виртуального
     // адреса кандидата
     requester.AddRequest(candidate_process, candidate_vaddress, candidate_raddress, true);
@@ -277,6 +292,16 @@ Requester& OS::GetRequester() {
 
 Scheduler& OS::GetScheduler() {
     return scheduler;
+}
+
+float OS::ComputeRML() {
+    float result;
+    for (int i = 0; i < ram.GetSize(); i++) {
+        if (ram.GetRealAddress(static_cast<PageNumber>(i)) == true) {
+            result++;
+        }
+    }
+    return result/ram.GetSize() * 100.;
 }
 
 void OS::Work() {
@@ -334,7 +359,7 @@ void CPU::Start() {
 
 
 DiskSpace::DiskSpace() {
-    for (int i = 0; i < static_cast<int>(OS_DEFAULT_DISKSPACE_SIZE); i++) {
+    for (int i = 0; i < static_cast<int>(AE_DEFAULT_DISKSPACE_SIZE); i++) {
         disk.push_back(false);
     }
 }
@@ -352,6 +377,7 @@ int DiskSpace::GetSize() {
 }
 
 AE::AE() {
+    io_total_time = 0;
     SetName("AE");
 }
 
@@ -361,7 +387,8 @@ void AE::LoadData() {
         if (disk.GetDiskAddress(i) == false) {
             disk.SetDiskAddress(i, true);
             SwapIndex.push_back({ tmp.p_process, tmp.vaddress, static_cast<DiskAddress>(i) });
-            Log("Save RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " (" + tmp.p_process->GetName() +" VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + ") -> AA=" + string(4 - to_string(i).length(), '0') + to_string(i));
+            io_total_time += AE_DEFAULT_TIME_FOR_DATA_IO;
+            Log("    Save RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " (" + tmp.p_process->GetName() +" VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + ") -> AA=" + string(4 - to_string(i).length(), '0') + to_string(i));
             g_pOS->GetRequester().DeleteRequest(tmp.p_process, tmp.vaddress);
 
             Schedule(GetTime() + AE_DEFAULT_TIME_FOR_DATA_IO, this, AE::ProcessRequest);
@@ -378,7 +405,8 @@ void AE::PopData() {
         if (SwapIndex[i].p_process == tmp.p_process && SwapIndex[i].vaddress == tmp.vaddress) {
             SwapIndex.erase(SwapIndex.begin() + i);
             disk.SetDiskAddress(SwapIndex[i].daddress, false);
-            Log("Pop AA=" + string(4 - to_string(i).length(), '0') + to_string(i) + " (" + tmp.p_process->GetName() + " VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + ")");            
+            io_total_time += AE_DEFAULT_TIME_FOR_DATA_IO;
+            Log("    Pop AA=" + string(4 - to_string(i).length(), '0') + to_string(i) + " (" + tmp.p_process->GetName() + " VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + ")");            
             g_pOS->GetRequester().DeleteRequest(tmp.p_process, tmp.vaddress);
             Schedule(GetTime() + AE_DEFAULT_TIME_FOR_DATA_IO, this, AE::ProcessRequest);
             
@@ -393,7 +421,7 @@ void AE::ProcessRequest() {
     if (!g_pOS->GetRequester().IsEmpty()) {
         RequestStruct tmp = g_pOS->GetRequester().GetRequest();
         
-        string text = "Process request (" + tmp.p_process->GetName() + " VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + " RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " LF=" + string(4 - to_string(tmp.load_flag).length(), '0') + to_string(tmp.load_flag) + ")";
+        string text = "      Process request (" + tmp.p_process->GetName() + " VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + " RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " LF=" + to_string(tmp.load_flag) + ")";
         PrintTime(&std::cout);
         std::cout << " " << std::setw(10) << std::setfill(' ') << std::right << "Requester"
             << "   " << text << std::endl;
@@ -419,6 +447,21 @@ bool AE::IsLoaded(Process* p_process, VirtualAddress vaddress) {
 
     return false;
 }
+
+float AE::ComputeAEL() {
+    float result;
+    for (int i = 0; i < disk.GetSize(); i++) {
+        if (disk.GetDiskAddress(static_cast<PageNumber>(i)) == true) {
+            result++;
+        }
+    }
+    return result/disk.GetSize() * 100.;
+}
+
+double AE::ComputePSL() {
+    return (float)io_total_time / (float)g_pSim->GetTime() * 100.;
+}
+
 
 void AE::Work() {
     //
