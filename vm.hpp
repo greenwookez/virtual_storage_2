@@ -14,9 +14,9 @@ const SimulatorTime Hour = Minute * 60;
 //CONFIG
 const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec;
 
-const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 1;
+const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 10*microSec;
 
-const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 1000*nanoSec;
+const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 1*Sec;
 const uint64_t OS_DEFAULT_RAM_SIZE = 512;
 const uint64_t OS_DEFAULT_DISKSPACE_SIZE = 5000;
 const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec;
@@ -69,7 +69,7 @@ class Requester {
     vector <RequestStruct> request_queue;
 public:
     void AddRequest(Process* p_process, VirtualAddress vaddress, RealAddress raddress, bool load_flag);
-    void DeleteRequest();
+    void DeleteRequest(Process* p_process, VirtualAddress vaddress);
     RequestStruct GetRequest();
     bool IsEmpty();
 
