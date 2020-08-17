@@ -3,6 +3,11 @@
 #include <iomanip>
 struct RequestStruct;
 
+extern Sim *g_pSim;
+extern OS *g_pOS;
+extern CPU *g_pCPU;
+extern AE *g_pAE;
+
 void AgentVM :: Log(string text) {
     string tail =
     " || RML=" + to_string(g_pOS->ComputeRML()).substr(0,5) +
@@ -57,7 +62,7 @@ int RAM::GetSize() {
 
 void Requester::AddRequest(Process* p_process, VirtualAddress vaddress, RealAddress raddress, bool load_flag) {
     if (IsEmpty()) {
-        Schedule(g_pSim->GetTime(), g_pAE, AE::ProcessRequest);
+        Schedule(g_pSim->GetTime(), g_pAE, &AE::ProcessRequest);
     }
 
     string text = "      New request (" + p_process->GetName() + " VA=" 
@@ -118,7 +123,7 @@ void Requester::PrintQueue() {
 void Scheduler::AddProcess(Process* p_process) {
     if (IsEmpty()) {
         // Если очередь пуста, планируем событие обработки этой очереди
-        Schedule(g_pSim->GetTime(), g_pOS, OS::ProcessQueue);
+        Schedule(g_pSim->GetTime(), g_pOS, &OS::ProcessQueue);
     }
 
     // Добавляем процесс в очередь кандидатов
@@ -391,7 +396,7 @@ void AE::LoadData() {
             Log("    Save RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " (" + tmp.p_process->GetName() +" VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + ") -> AA=" + string(4 - to_string(i).length(), '0') + to_string(i));
             g_pOS->GetRequester().DeleteRequest(tmp.p_process, tmp.vaddress);
 
-            Schedule(GetTime() + AE_DEFAULT_TIME_FOR_DATA_IO, this, AE::ProcessRequest);
+            Schedule(GetTime() + AE_DEFAULT_TIME_FOR_DATA_IO, this, &AE::ProcessRequest);
             return;
         }
     }
