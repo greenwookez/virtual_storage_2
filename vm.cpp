@@ -216,9 +216,9 @@ void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
             Process* scheduler_process = g_pOS->GetScheduler().GetProcess();
             if (scheduler_process->GetTimeLimit() > 0) {
                 scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - OS_DEFAULT_TIME_FOR_ALLOCATION);
-                Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, scheduler_process, Process::Work);
+                Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, scheduler_process, &Process::Work);
             } else {
-                Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS, OS::ChangeQueue);
+                Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS, &OS::ChangeQueue);
             }
 
 
@@ -275,9 +275,9 @@ void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
     Process* scheduler_process = g_pOS->GetScheduler().GetProcess();
     if (scheduler_process->GetTimeLimit() > 0) {
         scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - OS_DEFAULT_TIME_FOR_ALLOCATION);
-        Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, scheduler_process, Process::Work);
+        Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, scheduler_process, &Process::Work);
     } else {
-        Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS, OS::ChangeQueue);
+        Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS, &OS::ChangeQueue);
     }
 }
 
@@ -331,7 +331,7 @@ void CPU::Convert(VirtualAddress vaddress, Process *p_process) {
     TTStruct tmp = g_pOS->FindTT(p_process).GetRecord(vaddress);
     if (tmp.is_valid == false) {
         // Прерывание по отсутствию страницы
-        Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, OS::HandelInterruption, vaddress, tmp.raddress, p_process);
+        Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, &OS::HandelInterruption, vaddress, tmp.raddress, p_process);
         Log("Translate VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " " + p_process->GetName() + " -> Interrupt");
         return;
     }
@@ -342,9 +342,9 @@ void CPU::Convert(VirtualAddress vaddress, Process *p_process) {
         Process* scheduler_process = g_pOS->GetScheduler().GetProcess();
         if (scheduler_process->GetTimeLimit() > 0) {
             scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - CPU_DEFAULT_TIME_FOR_CONVERSION);
-            Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, scheduler_process, Process::Work);
+            Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, scheduler_process, &Process::Work);
         } else {
-            Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, OS::ChangeQueue);
+            Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, &OS::ChangeQueue);
         }
     }
 }
@@ -413,7 +413,7 @@ void AE::PopData() {
             io_total_time += AE_DEFAULT_TIME_FOR_DATA_IO;
             Log("    Pop AA=" + string(4 - to_string(i).length(), '0') + to_string(i) + " (" + tmp.p_process->GetName() + " VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + ")");            
             g_pOS->GetRequester().DeleteRequest(tmp.p_process, tmp.vaddress);
-            Schedule(GetTime() + AE_DEFAULT_TIME_FOR_DATA_IO, this, AE::ProcessRequest);
+            Schedule(GetTime() + AE_DEFAULT_TIME_FOR_DATA_IO, this, &AE::ProcessRequest);
             
             return;
         }
@@ -490,7 +490,7 @@ Process::Process() {
 void Process::Work() {
     VirtualAddress vaddress = static_cast<VirtualAddress>(randomizer(requested_memory));
 
-    Schedule(GetTime() + PROCESS_DEFAULT_WORK_TIME, g_pCPU, CPU::Convert, vaddress, this);
+    Schedule(GetTime() + PROCESS_DEFAULT_WORK_TIME, g_pCPU, &CPU::Convert, vaddress, this);
 }
 
 void Process::Wait() {
