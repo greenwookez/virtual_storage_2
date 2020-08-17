@@ -19,7 +19,8 @@ void AgentVM :: Log(string text) {
 
 TT::TT(Process* _p_process, PageNumber size) {
     for (int i = 0; i < static_cast<int>(size); i++) {
-        records.push_back({ static_cast<VirtualAddress>(i), 0, false });
+        TTStruct tmp_struct = { static_cast<VirtualAddress>(i), 0, false };
+        records.push_back(tmp_struct);
     }
     p_process = _p_process;
 }
@@ -72,8 +73,8 @@ void Requester::AddRequest(Process* p_process, VirtualAddress vaddress, RealAddr
     PrintTime(&std::cout);
     std::cout << " " << std::setw(10) << std::setfill(' ') << std::right << "Requester"
         << "   " << text << std::endl;
-
-    request_queue.push_back({ load_flag, p_process, vaddress, raddress });
+    RequestStruct tmp_struct = { load_flag, p_process, vaddress, raddress };
+    request_queue.push_back(tmp_struct);
 }
 
 void Requester::DeleteRequest(Process* p_process, VirtualAddress vaddress) {
@@ -167,13 +168,13 @@ void OS::ProcessQueue() {
     // Устанавливаем лимит по времени на работу одного процесса с ЦП
     scheduler.GetProcess()->SetTimeLimit(OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT);
     // Планируем саму работу процесса
-    Schedule(GetTime(), scheduler.GetProcess(), Process::Work);
+    Schedule(GetTime(), scheduler.GetProcess(), &Process::Work);
 }
 
 void OS::ChangeQueue() {
     scheduler.GetProcess()->SetTimeLimit(0);
     scheduler.PutInTheEnd();
-    Schedule(GetTime(), g_pOS, OS::ProcessQueue);
+    Schedule(GetTime(), g_pOS, &OS::ProcessQueue);
 }
 
 OS::OS() {
@@ -391,7 +392,8 @@ void AE::LoadData() {
     for (int i = 0; i < disk.GetSize(); i++) {
         if (disk.GetDiskAddress(i) == false) {
             disk.SetDiskAddress(i, true);
-            SwapIndex.push_back({ tmp.p_process, tmp.vaddress, static_cast<DiskAddress>(i) });
+            SwapIndexStruct tmp_struct = {tmp.p_process, tmp.vaddress, static_cast<DiskAddress>(i)};
+            SwapIndex.push_back(tmp_struct);
             io_total_time += AE_DEFAULT_TIME_FOR_DATA_IO;
             Log("    Save RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " (" + tmp.p_process->GetName() +" VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + ") -> AA=" + string(4 - to_string(i).length(), '0') + to_string(i));
             g_pOS->GetRequester().DeleteRequest(tmp.p_process, tmp.vaddress);
@@ -498,7 +500,7 @@ void Process::Wait() {
 }
 
 void Process::Start() {
-    Schedule(GetTime(), g_pOS, OS::LoadProcess, this);
+    Schedule(GetTime(), g_pOS, &OS::LoadProcess, this);
     Log("Start!");
 }
 
