@@ -301,7 +301,7 @@ Scheduler& OS::GetScheduler() {
 }
 
 float OS::ComputeRML() {
-    float result;
+    float result = 0.0;
     for (int i = 0; i < ram.GetSize(); i++) {
         if (ram.GetRealAddress(static_cast<PageNumber>(i)) == true) {
             result++;
@@ -456,7 +456,7 @@ bool AE::IsLoaded(Process* p_process, VirtualAddress vaddress) {
 }
 
 float AE::ComputeAEL() {
-    float result;
+    float result =0.0;
     for (int i = 0; i < disk.GetSize(); i++) {
         if (disk.GetDiskAddress(static_cast<PageNumber>(i)) == true) {
             result++;
