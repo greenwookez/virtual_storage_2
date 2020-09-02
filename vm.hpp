@@ -14,7 +14,7 @@ const SimulatorTime Hour = Minute * 60;
 //CONFIG
 
 const bool CONFIG_LOG_ENABLE_EMPTY_STRINGS = false; // включает пустые строки в логе
-const SimulatorTime CONFIG_SIM_TIME_LIMIT = 200*Sec; // лимит времени работы симулятора
+const SimulatorTime CONFIG_SIM_TIME_LIMIT = 10*Minute; // лимит времени работы симулятора
 
 
 const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec; // время работы устройства ввода/ввывода
@@ -22,7 +22,7 @@ const uint64_t AE_DEFAULT_DISKSPACE_SIZE = 500; // размер файла по�
 
 const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 10*microSec; // время на преобразование адреса процессом
 
-const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 1*Sec; // время, на которое процессу дается ЦП (потом ЦП передается другуму претенденту в очереди)
+const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 50000*microSec; // время, на которое процессу дается ЦП (потом ЦП передается другуму претенденту в очереди)
 const uint64_t OS_DEFAULT_RAM_SIZE = 512; // размер ОП в страницах
 const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec; // время на размещение
 
