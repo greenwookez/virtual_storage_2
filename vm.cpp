@@ -216,7 +216,7 @@ void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
 
             Process* scheduler_process = g_pOS->GetScheduler().GetProcess();
             if (scheduler_process->GetTimeLimit() > 0) {
-                scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - OS_DEFAULT_TIME_FOR_ALLOCATION);
+                scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - CPU_DEFAULT_TIME_FOR_CONVERSION);
                 Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, scheduler_process, &Process::Work);
             } else {
                 Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS, &OS::ChangeQueue);
@@ -275,7 +275,7 @@ void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
 
     Process* scheduler_process = g_pOS->GetScheduler().GetProcess();
     if (scheduler_process->GetTimeLimit() > 0) {
-        scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - OS_DEFAULT_TIME_FOR_ALLOCATION);
+        scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - CPU_DEFAULT_TIME_FOR_CONVERSION);
         Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, scheduler_process, &Process::Work);
     } else {
         Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS, &OS::ChangeQueue);
@@ -335,10 +335,9 @@ void CPU::Convert(VirtualAddress vaddress, Process *p_process) {
         Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, &OS::HandelInterruption, vaddress, tmp.raddress, p_process);
         Log("Translate VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " " + p_process->GetName() + " -> Interrupt");
         return;
-    }
-    else {
+    } else {
         // Успешное преобразование
-        Log("Translate VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " " + p_process->GetName() + " -> RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress));
+        Log("Translate VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " " + p_process->GetName() + " -> RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + "TL=" + to_string(p_process->GetTimeLimit()));
         
         Process* scheduler_process = g_pOS->GetScheduler().GetProcess();
         if (scheduler_process->GetTimeLimit() > 0) {
