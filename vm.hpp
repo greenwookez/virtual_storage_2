@@ -14,18 +14,18 @@ const SimulatorTime Hour = Minute * 60;
 //CONFIG
 
 const bool CONFIG_LOG_ENABLE_EMPTY_STRINGS = false; // включает пустые строки в логе
-const SimulatorTime CONFIG_SIM_TIME_LIMIT = 10*Hour; // лимит времени работы симулятора
+const SimulatorTime CONFIG_SIM_TIME_LIMIT = 4.35*Sec; // лимит времени работы симулятора
 
 const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec; // время работы устройства ввода/ввывода
 const uint64_t AE_DEFAULT_DISKSPACE_SIZE = 500; // размер файла подкачки в страницах
 
 const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 1; // время на преобразование адреса процессом
 
-const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 10000; // время, на которое процессу дается ЦП (потом ЦП передается другуму претенденту в очереди)
+const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 10; // время, на которое процессу дается ЦП (потом ЦП передается другуму претенденту в очереди)
 const uint64_t OS_DEFAULT_RAM_SIZE = 512; // размер ОП в страницах
 const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec; // время на размещение
 
-const SimulatorTime PROCESS_DEFAULT_WORK_TIME = 0; // время, за которое процесс совершает единицу работы
+const SimulatorTime PROCESS_DEFAULT_WORK_TIME = 1; // время, за которое процесс совершает единицу работы
 const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 50; // память, необходимая процессу в количестве страниц
 
 
@@ -96,11 +96,12 @@ public:
 
 class OS : public AgentVM {
     vector <TT> translation_tables;
-    RAM ram;
+    
     Requester requester;
     Scheduler scheduler;
 
 public:
+    RAM ram;
     OS();
     void HandelInterruption(VirtualAddress vaddress, RealAddress raddress, Process* p_process);
     void LoadProcess(Process* _p_process);
@@ -155,8 +156,9 @@ class AE : public AgentVM {
     void LoadData();
     void PopData();
 
-    SimulatorTime io_total_time;
+    
 public:
+    SimulatorTime io_total_time;
     AE();
     void ProcessRequest();
     bool IsLoaded(Process* p_process, VirtualAddress vaddress);

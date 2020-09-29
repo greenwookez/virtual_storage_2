@@ -50,8 +50,24 @@ int main()
         }
 
         for (int i = 0; i < amount; i++) {
+            
+            for (int j = 0; j < g_pOS->FindTT(all_processes[i]).GetSize(); j++) {
+                if (g_pOS->FindTT(all_processes[i]).GetRecord(j).is_valid == false) {
+                    cout << all_processes[i]->GetName() << " vaddress " << g_pOS->FindTT(all_processes[i]).GetRecord(j).vaddress << " is invalid." << endl;
+                }
+            }
+
             delete all_processes[i];
-        };
+        }
+
+
+        int count2 = 0;
+        for (int i = 0; i < g_pOS->ram.GetSize(); i++) {
+            if (g_pOS->ram.GetRealAddress(i) == false) {
+                count2++;
+            }
+        }
+        cout << "Number of free pages of RAM: " << count2 << endl;
 
         delete g_pSim;
         delete g_pOS;

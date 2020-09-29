@@ -1,6 +1,7 @@
 #include "vm.hpp"
 #include <iostream>
 #include <iomanip>
+#include <random>
 struct RequestStruct;
 
 extern Sim *g_pSim;
@@ -12,7 +13,8 @@ void AgentVM :: Log(string text) {
     string tail =
     " || RML=" + to_string(g_pOS->ComputeRML()).substr(0,5) +
     " AEL=" + to_string(g_pAE->ComputeAEL()).substr(0,5) +
-    " PSL="  + to_string(g_pAE->ComputePSL()).substr(0,5);
+    " PSL="  + to_string(g_pAE->ComputePSL()).substr(0,5) +
+    " IOTT= " + to_string(g_pAE->io_total_time);
     
     Agent::Log(text + string(60-text.length(), ' ') + tail, CONFIG_LOG_ENABLE_EMPTY_STRINGS);
 }
@@ -490,9 +492,20 @@ Process::Process() {
 }
 
 void Process::Work() {
-    VirtualAddress vaddress = static_cast<VirtualAddress>(randomizer(requested_memory));
-
-    Schedule(GetTime() + PROCESS_DEFAULT_WORK_TIME, g_pCPU, &CPU::Convert, vaddress, this);
+    if (randomizer(100) + 1 >= 30) {
+        // Протолкнуть время симуляции вручную?? Ведь процесс совершил работу
+        g_pSim->GetTime() = g_pSim->GetTime() + PROCESS_DEFAULT_WORK_TIME;
+        Log("Working. No need of CPU.");
+        if (GetTimeLimit() > 0) {
+            SetTimeLimit(GetTimeLimit() - PROCESS_DEFAULT_WORK_TIME);
+            Schedule(GetTime(), this, &Process::Work);
+        } else {
+            Schedule(GetTime(), g_pOS, &OS::ChangeQueue);
+        }
+    } else {
+        VirtualAddress vaddress = static_cast<VirtualAddress>(randomizer(requested_memory));
+        Schedule(GetTime(), g_pCPU, &CPU::Convert, vaddress, this);
+    }
 }
 
 void Process::Wait() {
@@ -521,6 +534,7 @@ SimulatorTime Process::GetTimeLimit() {
 }
 
 int randomizer(int max) {
-    srand(unsigned(clock()));
-    return rand() % max;
+    std::random_device rd; 
+    std::mt19937 mersenne(rd());
+    return mersenne() % max;
 }
