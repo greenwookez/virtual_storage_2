@@ -107,7 +107,7 @@ uint64_t Schedule(SimulatorTime time, OBJECT obj, METHOD met)
             (m_obj->*m_met)();
         }
     } *pEvent = new EventImpl(time, obj, met);
-    g_pSim->GetTime() = time;
+    // g_pSim->GetTime() = time;
     return g_pSim->Schedule(pEvent);
 }
 
@@ -137,7 +137,7 @@ uint64_t Schedule(SimulatorTime time, OBJECT obj, METHOD met, PARAM1 value1)
             (m_obj->*m_met)(m_value1);
         }
     } *pEvent = new EventImpl(time, obj, met, value1);
-    g_pSim->GetTime() = time;
+    // g_pSim->GetTime() = time;
     return g_pSim->Schedule(pEvent);
 }
 
@@ -169,7 +169,7 @@ uint64_t Schedule(SimulatorTime time, OBJECT obj, METHOD met, PARAM1 value1, PAR
             (m_obj->*m_met)(m_value1, m_value2);
         }
     } *pEvent = new EventImpl(time, obj, met, value1, value2);
-    g_pSim->GetTime() = time;
+    // g_pSim->GetTime() = time;
     return g_pSim->Schedule(pEvent);
 }
 
@@ -203,7 +203,7 @@ uint64_t Schedule(SimulatorTime time, OBJECT obj, METHOD met, PARAM1 value1, PAR
             (m_obj->*m_met)(m_value1, m_value2, m_value3);
         }
     } *pEvent = new EventImpl(time, obj, met, value1, value2, value3);
-    g_pSim->GetTime() = time;
+    // g_pSim->GetTime() = time;
     return g_pSim->Schedule(pEvent);
 }
 
@@ -239,7 +239,7 @@ uint64_t Schedule(SimulatorTime time, OBJECT obj, METHOD met, PARAM1 value1, PAR
             (m_obj->*m_met)(m_value1, m_value2, m_value3, m_value4);
         }
     } *pEvent = new EventImpl(time, obj, met, value1, value2, value3, value4);
-    g_pSim->GetTime() = time;
+    // g_pSim->GetTime() = time;
     return g_pSim->Schedule(pEvent);
 }
 

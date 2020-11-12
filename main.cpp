@@ -16,6 +16,8 @@ extern const SimulatorTime CONFIG_SIM_TIME_LIMIT;
 int main()
 {
     try {
+        cout << "hello" << endl;
+
         g_pSim = new Sim;
 
         const int amount = 15;
@@ -51,7 +53,7 @@ int main()
 
         for (int i = 0; i < amount; i++) {
             delete all_processes[i];
-        };
+        }
 
         delete g_pSim;
         delete g_pOS;

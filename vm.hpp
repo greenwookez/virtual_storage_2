@@ -14,18 +14,18 @@ const SimulatorTime Hour = Minute * 60;
 //CONFIG
 
 const bool CONFIG_LOG_ENABLE_EMPTY_STRINGS = false; // включает пустые строки в логе
-const SimulatorTime CONFIG_SIM_TIME_LIMIT = 10*Hour; // лимит времени работы симулятора
+const SimulatorTime CONFIG_SIM_TIME_LIMIT = Hour; // лимит времени работы симулятора
 
-const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec; // время работы устройства ввода/ввывода
-const uint64_t AE_DEFAULT_DISKSPACE_SIZE = 500; // размер файла подкачки в страницах
+const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10000; // время работы устройства ввода/ввывода
+const uint64_t AE_DEFAULT_DISKSPACE_SIZE = 5000; // размер файла подкачки в страницах
 
 const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 1; // время на преобразование адреса процессом
 
 const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 10000; // время, на которое процессу дается ЦП (потом ЦП передается другуму претенденту в очереди)
-const uint64_t OS_DEFAULT_RAM_SIZE = 512; // размер ОП в страницах
+const uint64_t OS_DEFAULT_RAM_SIZE = 700; // размер ОП в страницах
 const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec; // время на размещение
 
-const SimulatorTime PROCESS_DEFAULT_WORK_TIME = 0; // время, за которое процесс совершает единицу работы
+const SimulatorTime PROCESS_DEFAULT_WORK_TIME = 1; // время, за которое процесс совершает единицу работы
 const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 50; // память, необходимая процессу в количестве страниц
 
 
@@ -80,6 +80,9 @@ public:
     void DeleteRequest(Process* p_process, VirtualAddress vaddress);
     RequestStruct GetRequest();
     bool IsEmpty();
+    int GetQueueSize() {
+        return request_queue.size();
+    };
 
     void PrintQueue();
 };
@@ -113,7 +116,6 @@ public:
     void ChangeQueue();
 
     //For logging
-
     float ComputeRML();
 
     void Work();
@@ -133,7 +135,6 @@ public:
 
 class DiskSpace {
     vector <bool> disk;  // true means already in use
-
 public:
     DiskSpace();
     bool GetDiskAddress(PageNumber daddress);
@@ -156,10 +157,16 @@ class AE : public AgentVM {
     void PopData();
 
     SimulatorTime io_total_time;
+    
+    
 public:
+    SimulatorTime last_time;
+    uint64_t io_count;
     AE();
     void ProcessRequest();
     bool IsLoaded(Process* p_process, VirtualAddress vaddress);
+    SimulatorTime GetIOTT();
+
 
     //For logging
     float ComputeAEL();
