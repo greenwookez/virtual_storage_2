@@ -13,21 +13,17 @@ AE *g_pAE;
 
 
 extern const SimulatorTime CONFIG_SIM_TIME_LIMIT;
+extern const int PROCESS_AMOUNT;
 int main()
 {
     try {
-        cout << "hello" << endl;
-
         g_pSim = new Sim;
-
-        const int amount = 15;
-
         g_pOS = new OS;
         g_pCPU = new CPU;
         g_pAE = new AE;
 
-        Process * all_processes[amount];
-        for (int i = 0; i < amount; i++) {
+        Process * all_processes[PROCESS_AMOUNT];
+        for (int i = 0; i < PROCESS_AMOUNT; i++) {
             all_processes[i] = new Process;
             string name = "Process" + string(2-to_string(i).length(), '0') + to_string(i);
             all_processes[i]->SetName(name);
@@ -51,7 +47,7 @@ int main()
             g_pSim->SetLimit(g_pSim->GetTime()+CONFIG_SIM_TIME_LIMIT);
         }
 
-        for (int i = 0; i < amount; i++) {
+        for (int i = 0; i < PROCESS_AMOUNT; i++) {
             delete all_processes[i];
         }
 
@@ -61,13 +57,11 @@ int main()
         delete g_pAE;
     }
     catch(exception& ex) {
-        cout << ex.what() << endl;
+        cout << "CAUGHT AN EXCEPTION: " << ex.what() << endl;
     }
     catch(Requester& err) {
-        cout << "NO INFO IN TTS FOUND FOR CANDIDATE" << endl;
+        cout << "CAUGHT AN EXCEPTION: NO INFO IN TTS FOUND FOR CANDIDATE" << endl;
         err.PrintQueue();
     }
-
-    cout << "Returns 0" << endl;
     return 0;
 }

@@ -14,10 +14,15 @@ const SimulatorTime Hour = Minute * 60;
 //CONFIG
 
 const bool CONFIG_LOG_ENABLE_EMPTY_STRINGS = false; // включает пустые строки в логе
+const int CONFIG_LOG_DETAIL_LEVEL = 2; // степень подробности логирования
+// 3 - максимально подробное логирования
+// 2 - отображаются только сообщения о прерываниях и все действия ОС по обработке этих прерываний
+// 1 - отображаются только действия АС
 const SimulatorTime CONFIG_SIM_TIME_LIMIT = Hour; // лимит времени работы симулятора
 
-const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10000; // время работы устройства ввода/ввывода
-const uint64_t AE_DEFAULT_DISKSPACE_SIZE = 5000; // размер файла подкачки в страницах
+
+const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec; // время работы устройства ввода/ввывода
+const uint64_t AE_DEFAULT_DISKSPACE_SIZE = 2000; // размер файла подкачки в страницах
 
 const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 1; // время на преобразование адреса процессом
 
@@ -27,7 +32,8 @@ const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec; // время на 
 
 const SimulatorTime PROCESS_DEFAULT_WORK_TIME = 1; // время, за которое процесс совершает единицу работы
 const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 50; // память, необходимая процессу в количестве страниц
-
+const int PROCESS_AMOUNT = 15; // количество процессов
+const int PROCESS_MEMORY_ACCESS_PERCENTAGE = 30; // процент инструкций процесса, которые требуют обращения в память
 
 //TYPES
 typedef uint64_t PageNumber;
