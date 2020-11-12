@@ -14,8 +14,8 @@ void AgentVM :: Log(string text) {
     " || RML=" + to_string(g_pOS->ComputeRML()).substr(0,5) +
     " AEL=" + to_string(g_pAE->ComputeAEL()).substr(0,5) +
     " PSL="  + to_string(g_pAE->ComputePSL()).substr(0,5) +
-    " IOTT= " + to_string(g_pAE->io_total_time);
-    
+    " IOTT= " + to_string(g_pAE->GetIOTT()) +
+    " IOC= " + to_string(g_pAE->io_count);
     Agent::Log(text + string(60-text.length(), ' ') + tail, CONFIG_LOG_ENABLE_EMPTY_STRINGS);
 }
 
@@ -65,7 +65,9 @@ int RAM::GetSize() {
 
 void Requester::AddRequest(Process* p_process, VirtualAddress vaddress, RealAddress raddress, bool load_flag) {
     if (IsEmpty()) {
-        Schedule(g_pSim->GetTime(), g_pAE, &AE::ProcessRequest);
+        if (g_pSim->GetTime() - g_pAE->last_time >= AE_DEFAULT_TIME_FOR_DATA_IO) {
+            Schedule(g_pSim->GetTime(), g_pAE, &AE::ProcessRequest);
+        };
     }
 
     string text = "      New request (" + p_process->GetName() + " VA=" 
@@ -192,7 +194,7 @@ void OS::HandelInterruption(VirtualAddress vaddress, RealAddress raddress,  Proc
         
     }
     
-    // Ранее здесь Allocate планирвоался, а не вызывался
+    // Ранее здесь Allocate планировался, а не вызывался
     Allocate(vaddress, p_process);
 }
 
@@ -217,11 +219,12 @@ void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
             FindTT(p_process).GetRecord(vaddress).is_valid = true;
 
             Process* scheduler_process = g_pOS->GetScheduler().GetProcess();
+
+            g_pSim->GetTime() = g_pSim->GetTime() + OS_DEFAULT_TIME_FOR_ALLOCATION;
             if (scheduler_process->GetTimeLimit() > 0) {
-                scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - CPU_DEFAULT_TIME_FOR_CONVERSION);
-                Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, scheduler_process, &Process::Work);
+                Schedule(GetTime(), scheduler_process, &Process::Work);
             } else {
-                Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS, &OS::ChangeQueue);
+                Schedule(GetTime(), g_pOS, &OS::ChangeQueue);
             }
 
 
@@ -276,11 +279,11 @@ void OS::Substitute(VirtualAddress vaddress, Process* p_process) {
     FindTT(p_process).GetRecord(vaddress).is_valid = true;
 
     Process* scheduler_process = g_pOS->GetScheduler().GetProcess();
+    g_pSim->GetTime() = g_pSim->GetTime() + OS_DEFAULT_TIME_FOR_ALLOCATION;
     if (scheduler_process->GetTimeLimit() > 0) {
-        scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - CPU_DEFAULT_TIME_FOR_CONVERSION);
-        Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, scheduler_process, &Process::Work);
+        Schedule(GetTime(), scheduler_process, &Process::Work);
     } else {
-        Schedule(GetTime()+OS_DEFAULT_TIME_FOR_ALLOCATION, g_pOS, &OS::ChangeQueue);
+        Schedule(GetTime(), g_pOS, &OS::ChangeQueue);
     }
 }
 
@@ -335,13 +338,13 @@ void CPU::Convert(VirtualAddress vaddress, Process *p_process) {
     Process* scheduler_process = g_pOS->GetScheduler().GetProcess();
     if (tmp.is_valid == false) {
         // Прерывание по отсутствию страницы
-        //scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - CPU_DEFAULT_TIME_FOR_CONVERSION);
-        Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, &OS::HandelInterruption, vaddress, tmp.raddress, p_process);
+        // Schedule(GetTime() + CPU_DEFAULT_TIME_FOR_CONVERSION, g_pOS, &OS::HandelInterruption, vaddress, tmp.raddress, p_process);
         Log("Translate VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " " + p_process->GetName() + " -> Interrupt");
+        g_pOS->HandelInterruption(vaddress, tmp.raddress, p_process);
         return;
     } else {
         // Успешное преобразование
-        Log("Translate VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " " + p_process->GetName() + " -> RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " TL=" + to_string(p_process->GetTimeLimit()));
+        //Log("Translate VA=" + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) + " " + p_process->GetName() + " -> RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " TL=" + to_string(p_process->GetTimeLimit()));
         
         if (scheduler_process->GetTimeLimit() > 0) {
             scheduler_process->SetTimeLimit(scheduler_process->GetTimeLimit() - CPU_DEFAULT_TIME_FOR_CONVERSION);
@@ -385,7 +388,9 @@ int DiskSpace::GetSize() {
 }
 
 AE::AE() {
+    last_time = 0;
     io_total_time = 0;
+    io_count = 0;
     SetName("AE");
 }
 
@@ -397,10 +402,13 @@ void AE::LoadData() {
             SwapIndexStruct tmp_struct = {tmp.p_process, tmp.vaddress, static_cast<DiskAddress>(i)};
             SwapIndex.push_back(tmp_struct);
             io_total_time += AE_DEFAULT_TIME_FOR_DATA_IO;
+            io_count += 1;
             Log("    Save RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " (" + tmp.p_process->GetName() +" VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + ") -> AA=" + string(4 - to_string(i).length(), '0') + to_string(i));
+            cout << " LastT=" << to_string(last_time) << endl;
             g_pOS->GetRequester().DeleteRequest(tmp.p_process, tmp.vaddress);
-
+            last_time = g_pSim->GetTime();
             Schedule(GetTime() + AE_DEFAULT_TIME_FOR_DATA_IO, this, &AE::ProcessRequest);
+
             return;
         }
     }
@@ -415,10 +423,13 @@ void AE::PopData() {
             SwapIndex.erase(SwapIndex.begin() + i);
             disk.SetDiskAddress(SwapIndex[i].daddress, false);
             io_total_time += AE_DEFAULT_TIME_FOR_DATA_IO;
+            io_count += 1;
             Log("    Pop AA=" + string(4 - to_string(i).length(), '0') + to_string(i) + " (" + tmp.p_process->GetName() + " VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + ")");            
+            cout << " LastT=" << to_string(last_time) << endl;
             g_pOS->GetRequester().DeleteRequest(tmp.p_process, tmp.vaddress);
+            last_time = g_pSim->GetTime();
             Schedule(GetTime() + AE_DEFAULT_TIME_FOR_DATA_IO, this, &AE::ProcessRequest);
-            
+
             return;
         }
     }
@@ -430,19 +441,19 @@ void AE::ProcessRequest() {
     if (!g_pOS->GetRequester().IsEmpty()) {
         RequestStruct tmp = g_pOS->GetRequester().GetRequest();
         
-        string text = "      Process request (" + tmp.p_process->GetName() + " VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + " RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " LF=" + to_string(tmp.load_flag) + ")";
+        string text = "      Process request (" + tmp.p_process->GetName() + " VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + " RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " LF=" + to_string(tmp.load_flag) + ")" + "RQL=" + to_string(g_pOS->GetRequester().GetQueueSize());
         PrintTime(&std::cout);
         std::cout << " " << std::setw(10) << std::setfill(' ') << std::right << "Requester"
             << "   " << text << std::endl;
 
+        
         if (tmp.load_flag) {
-            //Schedule(GetTime(), this, AE::LoadData);
             LoadData();
-        }
-        else {
-            //Schedule(GetTime(), this, AE::PopData);
+        } else {
             PopData();
         }
+        g_pSim->GetTime() = g_pSim->GetTime() + AE_DEFAULT_TIME_FOR_DATA_IO;
+
     }
     return;
 }
@@ -455,6 +466,10 @@ bool AE::IsLoaded(Process* p_process, VirtualAddress vaddress) {
     }
 
     return false;
+}
+
+SimulatorTime AE::GetIOTT() {
+    return io_total_time;
 }
 
 float AE::ComputeAEL() {
@@ -495,13 +510,8 @@ void Process::Work() {
     if (randomizer(100) + 1 >= 30) {
         // Протолкнуть время симуляции вручную?? Ведь процесс совершил работу
         g_pSim->GetTime() = g_pSim->GetTime() + PROCESS_DEFAULT_WORK_TIME;
-        Log("Working. No need of CPU.");
-        if (GetTimeLimit() > 0) {
-            SetTimeLimit(GetTimeLimit() - PROCESS_DEFAULT_WORK_TIME);
-            Schedule(GetTime(), this, &Process::Work);
-        } else {
-            Schedule(GetTime(), g_pOS, &OS::ChangeQueue);
-        }
+        //Log("Working. No need of CPU.");
+        Schedule(GetTime(), this, &Process::Work);
     } else {
         VirtualAddress vaddress = static_cast<VirtualAddress>(randomizer(requested_memory));
         Schedule(GetTime(), g_pCPU, &CPU::Convert, vaddress, this);
@@ -534,6 +544,7 @@ SimulatorTime Process::GetTimeLimit() {
 }
 
 int randomizer(int max) {
+    // Функция, которая возвращает случайное число, работает на алгоритме Вихре Мерсенна
     std::random_device rd; 
     std::mt19937 mersenne(rd());
     return mersenne() % max;
