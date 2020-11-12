@@ -1,39 +1,12 @@
 #include <vector>
 #include <ctime>
 #include "sim.hpp"
-
 using namespace std;
 
-//TIME CONSTs
-const SimulatorTime nanoSec = 1;
-const SimulatorTime microSec = 1000000;
-const SimulatorTime Sec = 1000000000;
-const SimulatorTime Minute = Sec * 60;
-const SimulatorTime Hour = Minute * 60;
-
-//CONFIG
-
-const bool CONFIG_LOG_ENABLE_EMPTY_STRINGS = false; // включает пустые строки в логе
-const int CONFIG_LOG_DETAIL_LEVEL = 2; // степень подробности логирования
-// 3 - максимально подробное логирования
-// 2 - отображаются только сообщения о прерываниях и все действия ОС по обработке этих прерываний
-// 1 - отображаются только действия АС
-const SimulatorTime CONFIG_SIM_TIME_LIMIT = Hour; // лимит времени работы симулятора
 
 
-const SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec; // время работы устройства ввода/ввывода
-const uint64_t AE_DEFAULT_DISKSPACE_SIZE = 2000; // размер файла подкачки в страницах
 
-const SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 1; // время на преобразование адреса процессом
-
-const SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 10000; // время, на которое процессу дается ЦП (потом ЦП передается другуму претенденту в очереди)
-const uint64_t OS_DEFAULT_RAM_SIZE = 700; // размер ОП в страницах
-const uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec; // время на размещение
-
-const SimulatorTime PROCESS_DEFAULT_WORK_TIME = 1; // время, за которое процесс совершает единицу работы
-const uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 50; // память, необходимая процессу в количестве страниц
-const int PROCESS_AMOUNT = 15; // количество процессов
-const int PROCESS_MEMORY_ACCESS_PERCENTAGE = 30; // процент инструкций процесса, которые требуют обращения в память
+int InitializeInputData();
 
 //TYPES
 typedef uint64_t PageNumber;

@@ -11,11 +11,24 @@ OS *g_pOS;
 CPU *g_pCPU;
 AE *g_pAE;
 
-
 extern const SimulatorTime CONFIG_SIM_TIME_LIMIT;
 extern const int PROCESS_AMOUNT;
+
 int main()
 {
+    cout << endl << endl << endl << endl;
+    cout << "          Welcome to the Virtual Storage Simulator" << endl << endl;
+
+    int initialize_result = InitializeInputData();
+    if (initialize_result != 0) {
+        return initialize_result;
+    };
+
+    cout << endl << endl << "Simulation will go on until the time limit expires." << endl << "To interrupt simulation process immediately press Ctrl+C. " << endl;
+    cout << "Press any key to start simulation." << endl;
+    system("pause >nul");
+    cout << "Starting simulation. It could take few minutes until first messages" << endl << "appear in case you set CONFIG_LOG_DETAIL_LEVEL = 1." << endl;
+
     try {
         g_pSim = new Sim;
         g_pOS = new OS;

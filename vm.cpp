@@ -2,6 +2,10 @@
 #include <iostream>
 #include <iomanip>
 #include <random>
+#include <fstream>
+
+using namespace std;
+
 struct RequestStruct;
 
 extern Sim *g_pSim;
@@ -9,14 +13,111 @@ extern OS *g_pOS;
 extern CPU *g_pCPU;
 extern AE *g_pAE;
 
+//TIME CONSTs
+const SimulatorTime nanoSec = 1;
+const SimulatorTime microSec = 1000000;
+const SimulatorTime Sec = 1000000000;
+const SimulatorTime Minute = Sec * 60;
+const SimulatorTime Hour = Minute * 60;
+
+//CONFIG
+
+int CONFIG_LOG_ENABLE_EMPTY_STRINGS = 1; // включает пустые строки в логе 1 - выключает, 0 включает
+int CONFIG_LOG_DETAIL_LEVEL = 2; // степень подробности логирования
+// 3 - максимально подробное логирования
+// 2 - отображаются только сообщения о прерываниях и все действия ОС по обработке этих прерываний
+// 1 - отображаются только действия АС
+SimulatorTime CONFIG_SIM_TIME_LIMIT = Hour; // лимит времени работы симулятора
+
+
+SimulatorTime AE_DEFAULT_TIME_FOR_DATA_IO = 10*microSec; // время работы устройства ввода/ввывода
+uint64_t AE_DEFAULT_DISKSPACE_SIZE = 2000; // размер файла подкачки в страницах
+
+SimulatorTime CPU_DEFAULT_TIME_FOR_CONVERSION = 1; // время на преобразование адреса процессом
+
+SimulatorTime OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = 10000; // время, на которое процессу дается ЦП (потом ЦП передается другуму претенденту в очереди)
+uint64_t OS_DEFAULT_RAM_SIZE = 700; // размер ОП в страницах
+uint64_t OS_DEFAULT_TIME_FOR_ALLOCATION = 10*microSec; // время на размещение
+
+SimulatorTime PROCESS_DEFAULT_WORK_TIME = 1; // время, за которое процесс совершает единицу работы
+uint64_t PROCESS_DEFAULT_REQUESTED_MEMORY = 40; // память, необходимая процессу в количестве страниц
+int PROCESS_AMOUNT = 15; // количество процессов
+int PROCESS_MEMORY_ACCESS_PERCENTAGE = 40; // процент инструкций процесса, которые требуют обращения в память
+
+
+int InitializeInputData() {
+    ifstream input_data;
+    input_data.open("input_data.txt");
+    string read_buffer;
+    if (input_data.is_open()) {
+        while (getline (input_data,read_buffer))
+        {
+            int eq_pos;
+            for (int i = 0; i < read_buffer.size(); i++) {
+                if (read_buffer[i] == '=') {
+                    eq_pos = i;
+                    break;
+                }
+            }
+
+            if (read_buffer.substr(0,eq_pos) == "CONFIG_LOG_ENABLE_EMPTY_STRINGS") {
+                CONFIG_LOG_ENABLE_EMPTY_STRINGS = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "CONFIG_LOG_DETAIL_LEVEL") {
+                CONFIG_LOG_DETAIL_LEVEL = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "CONFIG_SIM_TIME_LIMIT") {
+                CONFIG_SIM_TIME_LIMIT = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "AE_DEFAULT_TIME_FOR_DATA_IO") {
+                AE_DEFAULT_TIME_FOR_DATA_IO = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "AE_DEFAULT_DISKSPACE_SIZE") {
+                AE_DEFAULT_DISKSPACE_SIZE = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "CPU_DEFAULT_TIME_FOR_CONVERSION") {
+                CPU_DEFAULT_TIME_FOR_CONVERSION = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT") {
+                OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "OS_DEFAULT_RAM_SIZE") {
+                OS_DEFAULT_RAM_SIZE = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "OS_DEFAULT_TIME_FOR_ALLOCATION") {
+                OS_DEFAULT_TIME_FOR_ALLOCATION = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "PROCESS_DEFAULT_WORK_TIME") {
+                PROCESS_DEFAULT_WORK_TIME = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "PROCESS_DEFAULT_REQUESTED_MEMORY") {
+                PROCESS_DEFAULT_REQUESTED_MEMORY = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "PROCESS_AMOUNT") {
+                PROCESS_AMOUNT = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            } else if (read_buffer.substr(0,eq_pos) == "PROCESS_MEMORY_ACCESS_PERCENTAGE") {
+                PROCESS_MEMORY_ACCESS_PERCENTAGE = stoll(read_buffer.substr(eq_pos+1, read_buffer.size()));
+            };
+        }
+        input_data.close();
+        cout << "                   Current configuration:" << endl;
+        cout << setw(40) << left << "CONFIG_LOG_ENABLE_EMPTY_STRINGS = " << setw(20) << right << CONFIG_LOG_ENABLE_EMPTY_STRINGS << endl;
+        cout << setw(40) << left << "CONFIG_LOG_DETAIL_LEVEL = " << setw(20) << right  << CONFIG_LOG_DETAIL_LEVEL << endl;
+        cout << setw(40) << left << "CONFIG_SIM_TIME_LIMIT = " << setw(20) << right  << CONFIG_SIM_TIME_LIMIT << endl;
+        cout << setw(40) << left << "AE_DEFAULT_TIME_FOR_DATA_IO = " << setw(20) << right  << AE_DEFAULT_TIME_FOR_DATA_IO << endl;
+        cout << setw(40) << left << "AE_DEFAULT_DISKSPACE_SIZE = " << setw(20) << right  << AE_DEFAULT_DISKSPACE_SIZE << endl;
+        cout << setw(40) << left << "CPU_DEFAULT_TIME_FOR_CONVERSION = " << setw(20) << right  << CPU_DEFAULT_TIME_FOR_CONVERSION << endl;
+        cout << setw(40) << left << "OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT = " << setw(20) << right  << OS_DEFAULT_PROCESS_QUEUE_TIME_LIMIT << endl;
+        cout << setw(40) << left << "OS_DEFAULT_RAM_SIZE = " << setw(20) << right  << OS_DEFAULT_RAM_SIZE << endl;
+        cout << setw(40) << left << "OS_DEFAULT_TIME_FOR_ALLOCATION = " << setw(20) << right  << OS_DEFAULT_TIME_FOR_ALLOCATION << endl;
+        cout << setw(40) << left << "PROCESS_DEFAULT_WORK_TIME = " << setw(20) << right  << PROCESS_DEFAULT_WORK_TIME << endl;
+        cout << setw(40) << left << "PROCESS_DEFAULT_REQUESTED_MEMORY = " << setw(20) << right  << PROCESS_DEFAULT_REQUESTED_MEMORY << endl;
+        cout << setw(40) << left << "PROCESS_AMOUNT = " << setw(20) << right  << PROCESS_AMOUNT << endl;
+        cout << setw(40) << left << "PROCESS_MEMORY_ACCESS_PERCENTAGE = " << setw(20) << right  << PROCESS_MEMORY_ACCESS_PERCENTAGE << endl;
+    } else {
+        cout << "ERROR: COULD NOT OPEN INPUT DATA FILE" << endl;
+        return 1;
+    }
+    return 0;
+}
+
 void AgentVM :: Log(string text) {
     string tail =
     " || RML=" + to_string(g_pOS->ComputeRML()).substr(0,5) +
     " AEL=" + to_string(g_pAE->ComputeAEL()).substr(0,5) +
-    " PSL="  + to_string(g_pAE->ComputePSL()).substr(0,5);
+    " PSL="  + to_string(g_pAE->ComputePSL()).substr(0,8);
     // " IOTT= " + to_string(g_pAE->GetIOTT()) +
     // " IOC= " + to_string(g_pAE->io_count);
-    Agent::Log(text + string(60-text.length(), ' ') + tail, CONFIG_LOG_ENABLE_EMPTY_STRINGS);
+    Agent::Log(text + string(70-text.length(), ' ') + tail, CONFIG_LOG_ENABLE_EMPTY_STRINGS);
 }
 
 TT::TT(Process* _p_process, PageNumber size) {
@@ -70,13 +171,23 @@ void Requester::AddRequest(Process* p_process, VirtualAddress vaddress, RealAddr
         };
     }
     if (CONFIG_LOG_DETAIL_LEVEL >= 2) {
+        string tmp =
+        " || RML=" + to_string(g_pOS->ComputeRML()).substr(0,5) +
+        " AEL=" + to_string(g_pAE->ComputeAEL()).substr(0,5) +
+        " PSL="  + to_string(g_pAE->ComputePSL()).substr(0,8);
+        // " IOTT= " + to_string(g_pAE->GetIOTT()) +
+        // " IOC= " + to_string(g_pAE->io_count);
+             
         string text = "      New request (" + p_process->GetName() + " VA=" 
         + string(4 - to_string(vaddress).length(), '0') + to_string(vaddress) 
         + " RA=" + string(4 - to_string(raddress).length(), '0') + to_string(raddress) 
         + " LF=" + to_string(load_flag) + ")";
+
+        string tail = string(70-text.length(), ' ') + tmp;
+
         PrintTime(&std::cout);
         std::cout << " " << std::setw(10) << std::setfill(' ') << std::right << "Requester"
-            << "   " << text << std::endl;
+            << "   " << text << tail << std::endl;
     }           
     RequestStruct tmp_struct = { load_flag, p_process, vaddress, raddress };
     request_queue.push_back(tmp_struct);
@@ -86,13 +197,23 @@ void Requester::DeleteRequest(Process* p_process, VirtualAddress vaddress) {
     for (int i = 0; i < static_cast<int>(request_queue.size()); i++) {
         if (request_queue[i].p_process == p_process && request_queue[i].vaddress == vaddress) {
             if (CONFIG_LOG_DETAIL_LEVEL >= 2) {
+                string tmp =
+                " || RML=" + to_string(g_pOS->ComputeRML()).substr(0,5) +
+                " AEL=" + to_string(g_pAE->ComputeAEL()).substr(0,5) +
+                " PSL="  + to_string(g_pAE->ComputePSL()).substr(0,8);
+                // " IOTT= " + to_string(g_pAE->GetIOTT()) +
+                // " IOC= " + to_string(g_pAE->io_count);
+
                 string text = "      Delete request (" + request_queue[0].p_process->GetName() + " VA=" 
                 + string(4 - to_string(request_queue[0].vaddress).length(), '0') + to_string(request_queue[0].vaddress) 
                 + " RA=" + string(4 - to_string(request_queue[0].raddress).length(), '0') + to_string(request_queue[0].raddress) 
                 + " LF=" + to_string(request_queue[0].load_flag) + ")";
+
+                string tail = string(70-text.length(), ' ') + tmp;
+
                 PrintTime(&std::cout);
                 std::cout << " " << std::setw(10) << std::setfill(' ') << std::right << "Requester"
-                    << "   " << text << std::endl;
+                    << "   " << text << tail << std::endl;
             }
 
             request_queue.erase(request_queue.begin() + i);
@@ -455,10 +576,19 @@ void AE::ProcessRequest() {
         RequestStruct tmp = g_pOS->GetRequester().GetRequest();
         
         if (CONFIG_LOG_DETAIL_LEVEL >= 2) {
+            string tmp2 =
+            " || RML=" + to_string(g_pOS->ComputeRML()).substr(0,5) +
+            " AEL=" + to_string(g_pAE->ComputeAEL()).substr(0,5) +
+            " PSL="  + to_string(g_pAE->ComputePSL()).substr(0,8);
+            // " IOTT= " + to_string(g_pAE->GetIOTT()) +
+            // " IOC= " + to_string(g_pAE->io_count);
+            
+            
             string text = "      Process request (" + tmp.p_process->GetName() + " VA=" + string(4 - to_string(tmp.vaddress).length(), '0') + to_string(tmp.vaddress) + " RA=" + string(4 - to_string(tmp.raddress).length(), '0') + to_string(tmp.raddress) + " LF=" + to_string(tmp.load_flag) + ")" + " RQL=" + to_string(g_pOS->GetRequester().GetQueueSize());
             PrintTime(&std::cout);
+            string tail = string(70-text.length(), ' ') + tmp2;
             std::cout << " " << std::setw(10) << std::setfill(' ') << std::right << "Requester"
-                << "   " << text << std::endl;
+                << "   " << text << tail << std::endl;
         }
         
         if (tmp.load_flag) {
