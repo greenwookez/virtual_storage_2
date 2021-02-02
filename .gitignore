@@ -1,3 +1,9 @@
 .vscode
 sim.out.dSYM
-.gitignore
+sim.dSYM
+nul
+.stdafx.c++.pch
+input_data0.txt
+*.out
+*.exe
+sim

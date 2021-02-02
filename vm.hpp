@@ -55,7 +55,7 @@ public:
 class Requester {
     vector <RequestStruct> request_queue;
 public:
-    void AddRequest(Process* p_process, VirtualAddress vaddress, RealAddress raddress, bool load_flag);
+    void AddRequest(Process* p_process, VirtualAddress vaddress, RealAddress raddress, bool load_flag, Process * p_initialProcess);
     void DeleteRequest(Process* p_process, VirtualAddress vaddress);
     RequestStruct GetRequest();
     bool IsEmpty();
@@ -74,6 +74,7 @@ public:
     void PutInTheEnd();
     Process* GetProcess();
     bool IsEmpty();
+    void PrintQueue();
 };
 
 class OS : public AgentVM {
@@ -136,8 +137,8 @@ class AE : public AgentVM {
     void PopData();
 
     SimulatorTime io_total_time;
-    
-    
+
+
 public:
     SimulatorTime last_time;
     uint64_t io_count;
@@ -150,7 +151,7 @@ public:
     //For logging
     float ComputeAEL();
     double ComputePSL();
-    
+
 
     void Work();
     void Wait();
@@ -160,6 +161,7 @@ public:
 class Process : public AgentVM {
     PageNumber requested_memory;
     SimulatorTime time_limit;
+    bool isWaiting;
 public:
     Process();
     void MemoryRequest(VirtualAddress vaddress);
@@ -167,6 +169,19 @@ public:
     uint64_t GetRequestedMemory();
     void SetTimeLimit(SimulatorTime value);
     SimulatorTime GetTimeLimit();
+
+    void setWaiting() {
+      isWaiting = true;
+    };
+
+    void setWorking() {
+      isWaiting = false;
+    };
+
+    bool getWaitingState() {
+      return isWaiting;
+    };
+
     void Work();
     void Wait();
     void Start();
@@ -185,4 +200,6 @@ struct RequestStruct {
     Process* p_process;
     VirtualAddress vaddress;
     RealAddress raddress;
+
+    Process* p_initialProcess;
 };
