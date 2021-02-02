@@ -289,7 +289,6 @@ void Scheduler::PrintQueue() {
             std::cout << "{" << name.substr(name.length() - 2, name.length()) << "} ";
         }
     }
-
     std::cout << endl;
 }
 
