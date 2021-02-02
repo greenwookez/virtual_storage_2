@@ -360,7 +360,6 @@ void OS::Allocate(VirtualAddress vaddress, Process* p_process) {
             return;
         }
     }
-
     // Если нераспределенного реального адреса найдено не было, необходимо перераспределение
     // существующих реальных адресов. Вызываем соответсвующую подпрограмму
     Substitute(vaddress, p_process);
